@@ -53,25 +53,34 @@ alter table public.notification_log enable row level security;
 create policy "notification_log: owner read" on public.notification_log
   for select using (user_id = auth.uid());
 
+-- ---------- server-only settings ------------------------------------------
+-- The push function stores its own address, a random secret for the scheduler and its
+-- notification (VAPID) keys here the first time it runs, so nobody has to copy keys around.
+-- RLS is on with NO policies, and access is revoked: only the server (service role) can read it.
+create table public.app_secrets (
+  name text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.app_secrets enable row level security;
+revoke all on public.app_secrets from anon, authenticated;
+
 -- ---------- the scheduler -------------------------------------------------
 -- pg_cron runs a job every 5 minutes; pg_net makes the web request to our Edge Function.
--- The function address and a shared secret are read from Supabase Vault, so no secret is
--- written in this file. See the README ("Scheduled reminders") for the two lines to run.
 create extension if not exists pg_cron with schema pg_catalog;
 create extension if not exists pg_net with schema extensions;
 
 create or replace function public.call_push_function(payload jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare
-  base_url text := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url');
-  secret text := (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret');
+  fn_url text := (select value from public.app_secrets where name = 'push_url');
+  secret text := (select value from public.app_secrets where name = 'cron_secret');
 begin
-  if base_url is null or secret is null then
-    raise warning 'Steadfast: vault secrets project_url / cron_secret are not set yet';
-    return;
+  if fn_url is null or secret is null then
+    return; -- the push function hasn't run yet; nothing to do
   end if;
   perform net.http_post(
-    url := base_url || '/functions/v1/push',
+    url := fn_url,
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', secret),
     body := payload,
     timeout_milliseconds := 20000

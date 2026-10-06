@@ -29,3 +29,30 @@ export async function deleteMyAccount() {
   const { error } = await supabase.rpc('delete_my_account')
   if (error) throw error
 }
+
+/** Make a new personal login code (any older code stops working). */
+export async function createLoginCode(): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('login', { body: { action: 'create' } })
+  if (error) throw new Error(await functionError(error))
+  return (data as { code: string }).code
+}
+
+/** Sign in on this phone with a login code from another phone. */
+export async function signInWithLoginCode(code: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('login', { body: { action: 'redeem', code } })
+  if (error) throw new Error(await functionError(error))
+  const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: (data as { token_hash: string }).token_hash, type: 'magiclink' })
+  if (verifyError) throw verifyError
+}
+
+/** Edge Function errors hide the message in the response body. */
+async function functionError(error: unknown): Promise<string> {
+  const ctx = (error as { context?: Response }).context
+  try {
+    const body = await ctx?.json()
+    if (body?.error) return body.error
+  } catch {
+    /* not JSON */
+  }
+  return error instanceof Error ? error.message : String(error)
+}

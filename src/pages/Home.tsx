@@ -37,6 +37,12 @@ export default function Home() {
         )}
       </section>
 
+      {profile && !profile.has_login_code && (
+        <Link to="/settings" className="card block border-l-4 border-amber-400 text-sm">
+          🔑 <strong>Save a login code</strong> so you can get back into your account on a new phone. Tap here, then “Login code”.
+        </Link>
+      )}
+
       <section className="card flex items-center gap-4" aria-label="Honesty streak">
         <div className="text-4xl" aria-hidden>🤝</div>
         <div className="flex-1">

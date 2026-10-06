@@ -4,36 +4,31 @@
 //   {"type":"encouragement","id":…} – from a database trigger when someone prays,
 //                     sends a message or asks for help (SOS)
 //   {"type":"test"}   – from the Settings screen: "Send test notification" to yourself
+//   {"type":"config"} – returns the public notification key the app needs to subscribe
 //
-// tick/encouragement requests must carry the x-cron-secret header (the CRON_SECRET secret).
+// tick/encouragement requests must carry the x-cron-secret header (a random secret the
+// function created itself and stored in app_secrets; the scheduler reads it from there).
 // test requests must carry the signed-in user's token (Authorization: Bearer …).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { addDays, localNow } from '../_shared/logic/dates.ts'
 import { dueReminders, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
-import { claimNotification, sendToUser, vapidFromEnv } from '../_shared/sender.ts'
+import { claimNotification, sendToUser } from '../_shared/sender.ts'
+import { getServerConfig } from '../_shared/config.ts'
+import { cors, json, signedInUser } from '../_shared/auth.ts'
 import type { VapidKeys } from '../_shared/logic/webpush.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
-const CRON_SECRET = Deno.env.get('CRON_SECRET')
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
     const body = await req.json().catch(() => ({}))
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
-    const vapid = vapidFromEnv()
-    const fromCron = Boolean(CRON_SECRET) && req.headers.get('x-cron-secret') === CRON_SECRET
+    const { vapid, cronSecret } = await getServerConfig(admin)
+    const fromCron = req.headers.get('x-cron-secret') === cronSecret
+
+    if (body.type === 'config') return json({ vapidPublicKey: vapid.publicKey })
 
     if (body.type === 'tick') {
       if (!fromCron) return json({ error: 'forbidden' }, 403)
@@ -46,9 +41,9 @@ Deno.serve(async (req) => {
     }
 
     if (body.type === 'test') {
-      const userId = await signedInUser(req)
-      if (!userId) return json({ error: 'not signed in' }, 401)
-      const sent = await sendToUser(admin, vapid, userId, {
+      const user = await signedInUser(req)
+      if (!user) return json({ error: 'not signed in' }, 401)
+      const sent = await sendToUser(admin, vapid, user.id, {
         title: 'Steadfast',
         body: 'Notifications are working 👍',
         url: '#/',
@@ -63,14 +58,6 @@ Deno.serve(async (req) => {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }
 })
-
-async function signedInUser(req: Request): Promise<string | null> {
-  const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
-  if (!token) return null
-  const client = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } })
-  const { data } = await client.auth.getUser(token)
-  return data.user?.id ?? null
-}
 
 /** Every 5 minutes: work out which reminders are due for every user with a device, and send them. */
 async function tick(admin: SupabaseClient, vapid: VapidKeys) {

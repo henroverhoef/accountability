@@ -37,7 +37,7 @@ export default function PushToggle({ showTest = true }: { showTest?: boolean }) 
         </p>
       )}
       {status === 'unsupported' && <p className="muted">This browser can’t receive notifications. Try Chrome on Android or the installed app on iPhone.</p>}
-      {status === 'not-configured' && <p className="muted">Notifications aren’t set up on the server yet (missing VAPID key; see README).</p>}
+      {status === 'not-configured' && <p className="muted">Couldn’t reach the notification server. Check your internet, or the setup isn’t finished yet (see README).</p>}
       {status === 'denied' && (
         <p className="muted">Notifications are blocked. Allow them in your phone’s settings for this app, then come back.</p>
       )}

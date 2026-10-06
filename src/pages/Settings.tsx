@@ -3,6 +3,7 @@ import { useData } from '../data/DataProvider'
 import TimezoneSelect from '../components/TimezoneSelect'
 import PushToggle from '../components/PushToggle'
 import Toggle from '../components/Toggle'
+import LoginCodeCard from '../components/LoginCodeCard'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import { deleteMyAccount, downloadBlob, exportMyData } from '../lib/account'
 import { clearPin, hasPin, setPin } from '../lib/pin'
@@ -11,7 +12,7 @@ import { shortTime } from '../lib/outcomes'
 import type { Profile } from '../lib/types'
 
 export default function Settings() {
-  const { profile, saveProfile, session, signOut } = useData()
+  const { profile, saveProfile, signOut } = useData()
   const [name, setName] = useState(profile?.display_name ?? '')
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
   const [saved, setSaved] = useState(false)
@@ -98,6 +99,12 @@ export default function Settings() {
         <p className="muted">Per-habit reminders (e.g. quiet time at 06:00) are set when you edit a habit.</p>
       </section>
 
+      <section id="login-code" className="space-y-2">
+        <h2 className="h2 px-1">Login code</h2>
+        <p className="muted px-1">There’s no password: your account lives on this phone. A login code lets you open it on a new phone (or after reinstalling). On the new phone choose “I already use Steadfast”.</p>
+        <LoginCodeCard />
+      </section>
+
       <PinSettings />
 
       <section className="card space-y-3">
@@ -108,8 +115,12 @@ export default function Settings() {
 
       <section className="card space-y-3">
         <h2 className="h2">Account</h2>
-        <p className="muted">Signed in as {session?.user.email}</p>
-        <button className="btn-secondary w-full" onClick={signOut}>Sign out</button>
+        <button className="btn-secondary w-full" onClick={() => {
+          const warning = profile.has_login_code
+            ? 'Sign out of this phone? You can come back with your login code.'
+            : 'You have no login code yet. If you sign out you can NEVER get back into this account. Sign out anyway?'
+          if (confirm(warning)) signOut()
+        }}>Sign out</button>
         <DeleteAccount onDeleted={signOut} />
       </section>
     </div>

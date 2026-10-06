@@ -1,7 +1,15 @@
 // Turning notifications on/off for this phone.
 import { supabase } from './supabase'
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
+// The server creates its own notification keys; we ask it for the public one.
+let vapidPublicKey: string | null = null
+async function getVapidPublicKey(): Promise<string | null> {
+  if (vapidPublicKey) return vapidPublicKey
+  const { data, error } = await supabase.functions.invoke('push', { body: { type: 'config' } })
+  if (error || !data?.vapidPublicKey) return null
+  vapidPublicKey = data.vapidPublicKey as string
+  return vapidPublicKey
+}
 
 export type PushStatus = 'unsupported' | 'needs-install' | 'not-configured' | 'denied' | 'off' | 'on'
 
@@ -17,7 +25,6 @@ export function isStandalone() {
 export async function getPushStatus(): Promise<PushStatus> {
   if (isIos() && !isStandalone()) return 'needs-install'
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported'
-  if (!VAPID_PUBLIC_KEY) return 'not-configured'
   if (Notification.permission === 'denied') return 'denied'
   const reg = await navigator.serviceWorker.getRegistration()
   const sub = await reg?.pushManager.getSubscription()
@@ -32,13 +39,14 @@ function base64UrlToBytes(s: string) {
 
 /** Ask permission (must be called from a button tap), subscribe, and save the subscription. */
 export async function enablePush(): Promise<PushStatus> {
-  if (!VAPID_PUBLIC_KEY) return 'not-configured'
+  const key = await getVapidPublicKey()
+  if (!key) return 'not-configured'
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'off'
   const reg = await navigator.serviceWorker.ready
   let sub = await reg.pushManager.getSubscription()
   if (!sub) {
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(VAPID_PUBLIC_KEY) })
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(key) })
   }
   const json = sub.toJSON()
   const { error } = await supabase.rpc('save_push_subscription', {

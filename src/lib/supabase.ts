@@ -7,10 +7,9 @@ export const isConfigured = Boolean(url && anonKey)
 
 export const supabase = createClient(url ?? 'http://localhost', anonKey ?? 'missing-key', {
   auth: {
-    // "pkce" puts the login code in ?code=… instead of the #hash, which plays nicely with our #/routes.
-    flowType: 'pkce',
+    // Your sign-in is remembered on this phone. There are no email links to read from the URL.
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false,
   },
 })

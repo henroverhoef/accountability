@@ -1,7 +1,10 @@
-# Minimal Supabase CLI config. Only used when you run `supabase` commands from this folder.
+# Supabase CLI settings. The GitHub Actions workflow uses this when it deploys.
 project_id = "steadfast"
 
-# The push function checks its own secret (cron) or the user's token (test),
-# so Supabase's built-in JWT check is switched off for it.
+# These functions check permissions themselves (the scheduler's secret, or the
+# signed-in user's token), so Supabase's built-in token check is switched off.
 [functions.push]
+verify_jwt = false
+
+[functions.login]
 verify_jwt = false

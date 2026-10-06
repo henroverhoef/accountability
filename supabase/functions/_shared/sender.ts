@@ -2,14 +2,6 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendWebPush, type VapidKeys } from './logic/webpush.ts'
 
-export function vapidFromEnv(): VapidKeys {
-  const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-  const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  const subject = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com'
-  if (!publicKey || !privateKey) throw new Error('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY secrets are not set')
-  return { publicKey, privateKey, subject }
-}
-
 export interface PushMessage {
   title: string
   body: string

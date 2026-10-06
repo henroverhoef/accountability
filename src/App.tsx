@@ -1,8 +1,9 @@
+import { useRef, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DataProvider, useData } from './data/DataProvider'
 import { isConfigured } from './lib/supabase'
 import Layout from './components/Layout'
-import SignIn from './pages/SignIn'
+import Welcome from './pages/Welcome'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import CheckIn from './pages/CheckIn'
@@ -30,9 +31,15 @@ export default function App() {
 
 function Gate() {
   const { authReady, session, profile, error, reload } = useData()
+  // Keep the welcome screen up (without flicker) while it creates the account and joins
+  // the group, until the profile with the new name has loaded.
+  const [welcomeBusy, setWelcomeBusy] = useState(false)
+  const startedSignedOut = useRef(false)
+  if (authReady && !session) startedSignedOut.current = true
 
   if (!authReady) return <Splash />
-  if (!session) return <SignIn />
+  const showWelcome = !session || welcomeBusy || (profile ? !profile.display_name : startedSignedOut.current)
+  if (showWelcome) return <Welcome onBusy={setWelcomeBusy} />
   if (!profile) {
     return error ? (
       <div className="page text-center">

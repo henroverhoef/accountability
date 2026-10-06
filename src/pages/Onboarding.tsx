@@ -1,20 +1,18 @@
 import { useState } from 'react'
 import { useData } from '../data/DataProvider'
-import TimezoneSelect from '../components/TimezoneSelect'
 import ErrorText, { errorMessage } from '../components/ErrorText'
+import PushToggle from '../components/PushToggle'
+import LoginCodeCard from '../components/LoginCodeCard'
 import { TEMPLATES } from '../lib/templates'
 import { shortTime, TYPE_NAMES } from '../lib/outcomes'
-import PushToggle from '../components/PushToggle'
-import { JoinOrCreate } from './Groups'
 
-const STEPS = ['about', 'habits', 'notify', 'privacy', 'group'] as const
+// Short setup after joining: habits, reminder, privacy, and saving a login code.
+const STEPS = ['habits', 'notify', 'privacy', 'code'] as const
 type Step = (typeof STEPS)[number]
 
 export default function Onboarding() {
   const { profile, saveProfile, createHabit, habits } = useData()
-  const [step, setStep] = useState<Step>('about')
-  const [name, setName] = useState(profile?.display_name ?? '')
-  const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
+  const [step, setStep] = useState<Step>('habits')
   const [reminder, setReminder] = useState(shortTime(profile?.checkin_reminder_time) || '21:30')
   const [picked, setPicked] = useState<string[]>(['purity', 'quiet-time'])
   const [busy, setBusy] = useState(false)
@@ -39,29 +37,10 @@ export default function Onboarding() {
     <div className="page">
       <p className="muted mb-2">Step {index + 1} of {STEPS.length}</p>
 
-      {step === 'about' && (
-        <section className="space-y-4">
-          <h1 className="h1">Welcome 👋</h1>
-          <p className="muted">Steadfast helps you build good habits, break bad ones, and walk together with a few trusted brothers.</p>
-          <div>
-            <label htmlFor="name" className="label">Your first name (what your group will see)</label>
-            <input id="name" className="input" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" />
-          </div>
-          <div>
-            <label htmlFor="tz" className="label">Your timezone</label>
-            <TimezoneSelect id="tz" value={timezone} onChange={setTimezone} />
-          </div>
-          <button className="btn-primary w-full" disabled={busy || !name.trim()}
-            onClick={() => run(async () => { await saveProfile({ display_name: name.trim(), timezone }); next() })}>
-            Continue
-          </button>
-        </section>
-      )}
-
       {step === 'habits' && (
         <section className="space-y-4">
-          <h1 className="h1">Pick your habits</h1>
-          <p className="muted">Start small: two or three is plenty. You can rename them (e.g. call Purity just “P”) and add more later.</p>
+          <h1 className="h1">Welcome, {profile?.display_name} 👋</h1>
+          <p className="muted">Pick your habits. Start small: two or three is plenty. You can rename them (e.g. call Purity just “P”) and add more later.</p>
           <ul className="space-y-2">
             {TEMPLATES.map((t) => {
               const on = picked.includes(t.key)
@@ -118,7 +97,7 @@ export default function Onboarding() {
           <h1 className="h1">Your privacy</h1>
           <div className="card space-y-3 text-sm leading-relaxed">
             <p>🔒 <strong>Everything is private by default.</strong> Your habits, answers and notes are only visible to you.</p>
-            <p>👥 If you join a group, you choose <strong>per habit</strong> what that group may see:</p>
+            <p>👥 You choose <strong>per habit</strong> what your group may see (on the group’s <em>Sharing</em> tab):</p>
             <ul className="ml-5 list-disc space-y-1">
               <li><strong>Private</strong>: nothing about this habit.</li>
               <li><strong>Check-in only</strong>: that you checked in, not how it went.</li>
@@ -126,19 +105,19 @@ export default function Onboarding() {
               <li><strong>Result + notes</strong>: also your tags and notes.</li>
             </ul>
             <p>The app name, icon and notifications never mention what you’re working on.</p>
-            <p>Group members can see whether you did your daily check-in, so they know when to reach out.</p>
+            <p>Your group can see whether you did your daily check-in, so they know when to reach out.</p>
           </div>
           <button className="btn-primary w-full" onClick={next}>Continue</button>
         </section>
       )}
 
-      {step === 'group' && (
+      {step === 'code' && (
         <section className="space-y-4">
-          <h1 className="h1">Walk together</h1>
-          <p className="muted">Got an invite code from a friend? Join their group. Or start one and invite a few trusted brothers. You can also do this later.</p>
-          <JoinOrCreate onDone={() => saveProfile({ onboarded: true })} />
-          <button className="btn-ghost w-full" disabled={busy} onClick={() => run(() => saveProfile({ onboarded: true }))}>
-            Skip for now
+          <h1 className="h1">Don’t lose your account</h1>
+          <p className="muted">There’s no password. Your account lives on this phone. Make a login code and keep it somewhere safe (e.g. a note in your password manager). With it you can use Steadfast on a new phone.</p>
+          <LoginCodeCard />
+          <button className="btn-primary w-full" disabled={busy} onClick={() => run(() => saveProfile({ onboarded: true }))}>
+            Finish
           </button>
         </section>
       )}

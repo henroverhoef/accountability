@@ -110,3 +110,11 @@ export async function sendWebPush(sub: PushSubscriptionKeys, data: unknown, vapi
   await res.body?.cancel()
   return res.status
 }
+
+/** Make a new VAPID key pair (same format as `npx web-push generate-vapid-keys`). */
+export async function generateVapidKeys(): Promise<{ publicKey: string; privateKey: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair
+  const publicKey = b64urlEncode(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)))
+  const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey)
+  return { publicKey, privateKey: jwk.d! }
+}

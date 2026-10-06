@@ -159,6 +159,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // --- loading ------------------------------------------------------------
   const reload = useCallback(async () => {
+    // Read the session fresh: callers may hold an older copy of this function
+    // from before they signed in.
+    const userId = (await supabase.auth.getSession()).data.session?.user.id
     if (!userId) return
     setLoading(true)
     setError(null)
