@@ -16,31 +16,23 @@ code, and they're in. Each phone gets its own private account. A personal *login
 
 ## Setup
 
-The Supabase project **steadfast** (`qvqbnwmcordnfcttdbkg`) is already set up: database
-tables and security rules, the two server functions (`push`, `login`), notification
-keys and the 5-minute reminder scheduler. The app's public Supabase address and key are
-in `.env.production`.
+Everything is set up. The app lives at **https://accountability-five.vercel.app/**.
 
-What's left (a few clicks):
+- **Supabase** project **steadfast** (`qvqbnwmcordnfcttdbkg`): database tables and
+  security rules, the two server functions (`push`, `login`), notification keys, the
+  5-minute reminder scheduler, and "Allow anonymous sign-ins" (Authentication →
+  Sign In / Providers) switched on. The app's public Supabase address and key are in
+  `.env.production`.
+- **Vercel** builds and hosts the app, and rebuilds it automatically on every push to
+  `main`. It has its own address on purpose: on GitHub Pages every app of yours shares
+  `henroverhoef.github.io`, so Chrome mixed up install status and notification
+  permission with Beursie. (Optional: Vercel → Project → Settings → Domains to rename it.)
+- **GitHub Actions** (`.github/workflows/deploy.yml`) runs the tests on every push and
+  publishes a small redirect on the old address
+  (`henroverhoef.github.io/accountability/` → the Vercel address), so old links still
+  work.
 
-### 1. Allow joining without email (Supabase)
-
-Supabase → project **steadfast** → **Authentication → Sign In / Providers** (or
-*Providers*) → switch on **Allow anonymous sign-ins** → **Save**.
-
-### 2. GitHub settings
-
-1. **Settings → General → Default branch** → choose **main**.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
-
-### 3. Publish
-
-**Actions → Deploy → Run workflow** (it also runs by itself whenever something is
-pushed to `main`). After 1–2 minutes it's green ✅ and the app is live at:
-
-**https://henroverhoef.github.io/accountability/**
-
-### 4. (Optional) Automatic Supabase updates
+### Optional: automatic Supabase updates
 
 When the database or server functions change in this repo, they need to be applied to
 Supabase. Either ask Claude (with the Supabase connector) to apply them, or let GitHub
@@ -53,22 +45,7 @@ variables → Actions**):
 | `SUPABASE_DB_PASSWORD` | the database password from when the project was created (reset it under Project Settings → Database if needed) |
 | `SUPABASE_ACCESS_TOKEN` | a token from <https://supabase.com/dashboard/account/tokens> |
 
-### Hosting on its own address (Vercel, recommended)
-
-GitHub Pages puts every app of yours on the same address (`henroverhoef.github.io`), so
-Chrome mixes up their install status and notification permission (e.g. with Beursie).
-Steadfast therefore lives on Vercel, at its own address:
-
-1. Go to <https://vercel.com/new> (sign in with GitHub).
-2. **Import** the `accountability` repository. Vercel recognises the settings from
-   `vercel.json`; just click **Deploy**.
-3. Optional: Project → Settings → Domains → rename it to something nice, e.g.
-   `steadfast-shofar.vercel.app`.
-
-Every push to `main` now updates the app on Vercel automatically. Use the Vercel address
-everywhere (install links, invites). The GitHub Pages copy keeps working but isn't needed.
-
-### 5. Start your group
+### Start your group
 
 1. Open the address on your phone and install it (see below).
 2. Choose **Start a new group**, enter your name and a group name.
@@ -82,7 +59,7 @@ everywhere (install links, invites). The GitHub Pages copy keeps working but isn
 
 **Android (Chrome)**
 1. Open the link in Chrome.
-2. Tap the **⋮** menu → **Add to Home screen** (or **Install app**) → **Install**.
+2. Tap the **⋮** menu → **Install app** (not "Create shortcut") → **Install**.
 3. Open Steadfast from the icon, join, then **Settings → Turn on notifications**.
 
 **iPhone (Safari, iOS 16.4 or newer)**

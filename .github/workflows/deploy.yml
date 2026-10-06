@@ -1,4 +1,10 @@
-# Builds the app and publishes it on GitHub Pages every time you push to main.
+# Runs on every push to main:
+#   - runs the tests and checks the app builds
+#   - (optional) updates Supabase, see below
+#   - publishes a small REDIRECT page on GitHub Pages, so old links to
+#     henroverhoef.github.io/accountability/ go to the app's real home on Vercel.
+# The app itself is built and hosted by Vercel (https://accountability-five.vercel.app),
+# which rebuilds automatically on every push.
 #
 # The app's (public) Supabase address and key are in .env.production.
 #
@@ -83,15 +89,14 @@ jobs:
             -d '{"type":"config"}' > /dev/null \
             || echo "::warning::The push function didn't answer yet; it will set itself up on first use."
 
-      - name: Build the app
+      - name: Check the app builds
         run: npm run build
-        env:
-          # The site lives at https://<user>.github.io/<repo-name>/
-          VITE_BASE: /${{ github.event.repository.name }}/
 
+      # GitHub Pages only serves the redirect page (see redirect/index.html). The old
+      # service worker file disappears, so phones that had the old copy drop it.
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: redirect
 
   deploy:
     needs: build
