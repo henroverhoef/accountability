@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { disablePush, enablePush, getPushStatus, sendTestPush, type PushStatus } from '../lib/push'
+import { disablePush, enablePush, getPushStatus, isIos, sendTestPush, type PushStatus } from '../lib/push'
 import ErrorText, { errorMessage } from './ErrorText'
 
 /** "Turn on notifications" button with friendly help for each situation. */
@@ -38,9 +38,7 @@ export default function PushToggle({ showTest = true }: { showTest?: boolean }) 
       )}
       {status === 'unsupported' && <p className="muted">This browser can’t receive notifications. Try Chrome on Android or the installed app on iPhone.</p>}
       {status === 'not-configured' && <p className="muted">Couldn’t reach the notification server. Check your internet, or the setup isn’t finished yet (see README).</p>}
-      {status === 'denied' && (
-        <p className="muted">Notifications are blocked. Allow them in your phone’s settings for this app, then come back.</p>
-      )}
+      {status === 'denied' && <BlockedHelp />}
       {status === 'off' && (
         <button className="btn-primary w-full" disabled={busy} onClick={() => run(async () => setStatus(await enablePush()))}>
           🔔 Turn on notifications
@@ -64,6 +62,27 @@ export default function PushToggle({ showTest = true }: { showTest?: boolean }) 
       )}
       {info && <p className="muted">{info}</p>}
       <ErrorText error={error} />
+    </div>
+  )
+}
+
+/** Notifications were blocked earlier. The browser won't ask again, so explain where to unblock. */
+function BlockedHelp() {
+  const site = window.location.host
+  return (
+    <div className="space-y-2 rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+      <p className="font-semibold">Notifications are blocked for {site}.</p>
+      {isIos() ? (
+        <p>iPhone: open <strong>Settings → Notifications → Steadfast</strong> and turn on <strong>Allow Notifications</strong>. Then come back here.</p>
+      ) : (
+        <ol className="ml-5 list-decimal space-y-1">
+          <li>Open <strong>Chrome</strong> → <strong>⋮</strong> → <strong>Settings</strong> → <strong>Site settings</strong> → <strong>Notifications</strong>.</li>
+          <li>Find <strong>{site}</strong> (under “Blocked”), tap it and choose <strong>Allow</strong>.</li>
+          <li>Also check Android <strong>Settings → Apps → Chrome → Notifications</strong> is on.</li>
+          <li>Come back here and reopen this screen.</li>
+        </ol>
+      )}
+      <p className="text-xs opacity-80">This permission is shared by every app on {site}, so it may have been blocked by another one.</p>
     </div>
   )
 }
