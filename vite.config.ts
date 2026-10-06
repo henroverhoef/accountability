@@ -20,6 +20,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: false,
       manifest: {
+        // A fixed, unique app identity. Other apps on henroverhoef.github.io (e.g. Beursie)
+        // share the same web address, so we never want Chrome to mix them up.
+        id: 'steadfast-app',
         name: 'Steadfast',
         short_name: 'Steadfast',
         description: 'Daily habits and encouragement with friends',

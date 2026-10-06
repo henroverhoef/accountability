@@ -2,18 +2,42 @@
 // The service worker: runs in the background, even when the app is closed.
 // 1) Caches the app so it opens offline.
 // 2) Shows push notifications and opens the right screen when one is tapped.
-import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, createHandlerBoundToURL, getCacheKeyForURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { cacheNames } from 'workbox-core'
 
 declare const self: ServiceWorkerGlobalScope
 
 self.skipWaiting()
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
+const PRECACHE = self.__WB_MANIFEST // the app's files, filled in at build time
 cleanupOutdatedCaches()
-precacheAndRoute(self.__WB_MANIFEST)
+precacheAndRoute(PRECACHE)
 // Any page navigation inside the app gets the cached index.html (we use #/routes, so this is simple).
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
+
+// ---------- Repairing the offline copy ------------------------------------------
+// Other apps on the same web address (e.g. Beursie) may delete ALL offline caches when
+// they update. When the app opens it asks us to check, and we re-download anything missing.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'repair-offline-cache') event.waitUntil(repairPrecache())
+})
+
+async function repairPrecache() {
+  const cache = await caches.open(cacheNames.precache)
+  for (const entry of PRECACHE) {
+    const url = new URL(typeof entry === 'string' ? entry : entry.url, self.location.href).href
+    const key = getCacheKeyForURL(url) ?? url
+    if (await cache.match(key)) continue
+    try {
+      const response = await fetch(url, { cache: 'reload' })
+      if (response.ok) await cache.put(key, response)
+    } catch {
+      return // offline right now; try again next time
+    }
+  }
+}
 
 // ---------- Push notifications ----------------------------------------------
 interface PushData {

@@ -7,6 +7,9 @@ import App from './App'
 // Install/update the service worker (offline support + notifications).
 registerSW({ immediate: true })
 
+// Make sure the offline copy is complete (another app on this address may have cleared it).
+navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage({ type: 'repair-offline-cache' }))
+
 // When a notification is tapped while the app is already open, the service worker
 // asks us to jump to the right screen.
 navigator.serviceWorker?.addEventListener('message', (event) => {
