@@ -87,6 +87,8 @@ export default function Home() {
         </section>
       )}
 
+      <Link to="/summary" className="btn-secondary w-full">📊 Week in review</Link>
+
       <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-4 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
         🆘 I need help
       </Link>

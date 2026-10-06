@@ -3,3 +3,4 @@
 export * from '../../supabase/functions/_shared/logic/dates.ts'
 export * from '../../supabase/functions/_shared/logic/habits.ts'
 export * from '../../supabase/functions/_shared/logic/streaks.ts'
+export * from '../../supabase/functions/_shared/logic/summary.ts'

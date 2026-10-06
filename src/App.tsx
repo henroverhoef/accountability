@@ -14,6 +14,8 @@ import Groups from './pages/Groups'
 import GroupDetail from './pages/GroupDetail'
 import Join from './pages/Join'
 import Sos from './pages/Sos'
+import Summary from './pages/Summary'
+import PinLock from './components/PinLock'
 
 export default function App() {
   if (!isConfigured) return <NotConfigured />
@@ -44,22 +46,25 @@ function Gate() {
   if (!profile.onboarded) return <Onboarding />
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/checkin" element={<CheckIn />} />
-        <Route path="/habits" element={<Habits />} />
-        <Route path="/habits/new" element={<HabitEdit />} />
-        <Route path="/habits/:id" element={<HabitDetail />} />
-        <Route path="/habits/:id/edit" element={<HabitEdit />} />
-        <Route path="/groups" element={<Groups />} />
-        <Route path="/groups/:id" element={<GroupDetail />} />
-        <Route path="/join/:code" element={<Join />} />
-        <Route path="/sos" element={<Sos />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <PinLock>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/checkin" element={<CheckIn />} />
+          <Route path="/habits" element={<Habits />} />
+          <Route path="/habits/new" element={<HabitEdit />} />
+          <Route path="/habits/:id" element={<HabitDetail />} />
+          <Route path="/habits/:id/edit" element={<HabitEdit />} />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/groups/:id" element={<GroupDetail />} />
+          <Route path="/join/:code" element={<Join />} />
+          <Route path="/sos" element={<Sos />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/summary" element={<Summary />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </PinLock>
   )
 }
 

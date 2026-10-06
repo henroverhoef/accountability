@@ -2,7 +2,7 @@
 // Pure function: the Edge Function loads data, calls dueReminders(), then sends.
 // The scheduler runs every 5 minutes; a reminder is "due" during the 30 minutes after
 // its time, and the notification_log table makes sure each one is only sent once.
-import { addDays, localNow, timeToMinutes } from './dates.ts'
+import { addDays, localNow, timeToMinutes, weekdayOf } from './dates.ts'
 import { isDue, type HabitRules } from './habits.ts'
 
 export const REMINDER_WINDOW_MINUTES = 30
@@ -16,7 +16,11 @@ export interface ReminderProfile {
   quiet_start: string | null
   quiet_end: string | null
   notify_reminders: boolean
+  notify_weekly?: boolean
 }
+
+/** The weekly review notification goes out on Sunday at this local time. */
+export const WEEKLY_REVIEW_TIME = '19:00'
 
 export interface ReminderHabit extends HabitRules {
   name: string
@@ -60,17 +64,25 @@ export function dueReminders(
   habits: ReminderHabit[],
   checkins: { habit_id: string; date: string }[],
 ): PlannedPush[] {
-  if (!profile.notify_reminders) return []
   const { date: today, minutes } = localNow(now, profile.timezone)
   if (inQuietHours(minutes, profile.quiet_start, profile.quiet_end)) return []
+
+  const out: PlannedPush[] = []
+
+  if (profile.notify_weekly) {
+    const day = firesFor(today, minutes, timeToMinutes(WEEKLY_REVIEW_TIME))
+    if (day && weekdayOf(day) === 0) {
+      out.push({ kind: 'weekly', ref: day, title: 'Steadfast', body: 'Your week in review is ready', url: '#/summary' })
+    }
+  }
+
+  if (!profile.notify_reminders) return out
 
   const active = habits.filter((h) => !h.archived)
   const done = new Set(checkins.map((c) => `${c.habit_id}|${c.date}`))
   const checkedIn = (h: HabitRules, day: string) => done.has(`${h.id}|${day}`)
   const dayComplete = (day: string) => active.filter((h) => isDue(h, day)).every((h) => checkedIn(h, day))
   const checkinUrl = (day: string) => (day === today ? '#/checkin' : `#/checkin?day=${day}`)
-
-  const out: PlannedPush[] = []
 
   if (profile.checkin_reminder_time) {
     const at = timeToMinutes(profile.checkin_reminder_time)

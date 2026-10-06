@@ -21,9 +21,11 @@ data in a free **Supabase** project.
    5. [Notifications and scheduled reminders](#5-notifications-and-scheduled-reminders)
    6. [Groups](#6-groups)
 3. [Installing the app on a phone](#installing-the-app-on-a-phone)
-4. [Working on the code](#working-on-the-code)
-5. [Project layout](#project-layout)
-6. [Privacy & security notes](#privacy--security-notes)
+4. [Testing on your phone (checklist)](#testing-on-your-phone-checklist)
+5. [Other features](#other-features)
+6. [Working on the code](#working-on-the-code)
+7. [Project layout](#project-layout)
+8. [Privacy & security notes](#privacy--security-notes)
 
 ---
 
@@ -237,6 +239,69 @@ On Android, after installing, also go to Settings → Turn on notifications → 
 
 ---
 
+## Testing on your phone (checklist)
+
+After each setup step, the app updates automatically (close and reopen it; on iPhone
+you may need to close it from the app switcher twice to get the newest version).
+
+**Phase 1: solo use**
+1. Open the site on your phone, install it (see above), open it from the icon.
+2. Sign in with your email → enter the code from the email.
+3. Enter your name, pick 2–3 habits, finish onboarding.
+4. Tap **Check in**, answer each habit, **Save**. Try *Slipped* on Purity: you should see a
+   verse. Check **Yesterday** too.
+5. Habits → tap a habit → see the heatmap; tap a square to see that day. Edit a habit,
+   rename it, add a tag.
+6. Turn on airplane mode and reopen the app: it should still open.
+
+**Phase 2: notifications** (after step 5 of the setup)
+1. Settings → **Turn on notifications** → Allow → **Send test**. A notification should
+   arrive within seconds. Tap it: the app opens.
+2. Set **Evening check-in reminder** to ~10 minutes from now, don't check in, and lock
+   the phone. The reminder arrives within 5 minutes of that time (the scheduler runs
+   every 5 minutes). With *Nudge* on, another one comes after the delay you chose.
+3. Edit Bedtime → wind-down 30 min, set its target ~35 min from now → reminder arrives.
+4. Check in, then set the reminder a few minutes ahead again: no reminder (already done).
+
+**Phase 3: groups** (best with a second phone or a friend)
+1. Groups → **Start a group** → Invite tab → **Share invite link** to a friend.
+2. Friend opens the link (or enters the code) → **Join group**.
+3. Each of you: Group → **Sharing** tab → set one habit to *Result + notes*, another to
+   *Check-in only*, leave one *Private*. Check in. On the other phone, the Members tab
+   shows exactly that and no more.
+4. Tap **🙏 Praying for you** on your friend → they get a notification.
+5. Home → **🆘 I need help** → **Ask for prayer now** → friend is notified; you see the
+   calming screen. Trying again within 10 minutes is refused (spam protection).
+
+**Phase 4: polish**
+1. Home → **Week in review**. On Sunday at 19:00 you also get a notification for it.
+2. Settings → **Set a PIN**. Switch to another app for more than a minute, come back:
+   the PIN pad appears.
+3. Airplane mode → check in → "Saved on this phone". Turn airplane mode off and open
+   the app: it syncs (banner disappears).
+4. Settings → **Export my data** downloads a JSON file.
+5. (Test account only!) Settings → **Delete my account** removes everything.
+
+---
+
+## Other features
+
+- **Weekly review** (Home → Week in review): days fully checked in, outcomes per habit,
+  streaks, and the tags that came up most on harder days. Personal only; there are no
+  leaderboards. A notification "Your week in review is ready" comes on Sunday at 19:00
+  (switch off in Settings).
+- **PIN lock** (Settings → App lock): a 4-digit PIN asked for when the app opens or after
+  more than a minute in the background. It's stored on the phone as a salted hash.
+  It keeps casual eyes out but isn't a security vault. "Forgot PIN?" signs you out (your
+  data is safe on the server).
+- **Offline**: the app and your recent data are kept on the phone. Check-ins made
+  offline are saved and sent automatically when you're back online.
+- **Export my data**: a JSON file with everything the server stores about you.
+- **Delete my account**: permanently removes your account and all your data. Groups you
+  created stay for the other members.
+
+---
+
 ## Working on the code
 
 You need [Node.js](https://nodejs.org) 22 or newer.
@@ -245,7 +310,8 @@ You need [Node.js](https://nodejs.org) 22 or newer.
 npm install
 cp .env.example .env.local      # then fill in your Supabase URL and anon key
 npm run dev                     # opens http://localhost:5173/accountability/
-npm test                        # runs the automated tests
+npm test                        # runs the automated tests (streaks, time targets,
+                                #   reminder timing in timezones, weekly summary, push encryption)
 npm run build                   # type-checks and builds into dist/
 ```
 
@@ -261,6 +327,8 @@ src/
   lib/push.ts             turning notifications on/off, test notification
   data/DataProvider.tsx   loads/saves your profile, habits and check-ins
   pages/                  one file per screen
+  data/offline.ts         on-phone copy of your data + offline check-in queue
+  lib/pin.ts              optional PIN lock
   components/             reusable pieces (check-in card, heatmap, …)
   lib/                    templates, Bible verses, labels, Supabase client
 supabase/
@@ -295,5 +363,6 @@ Common changes:
 - Notification text never mentions what a habit is about. Reminders for "avoid" habits
   never include the habit's name.
 - The VAPID private key and cron secret live only in Supabase secrets / Vault.
+- Signing out removes the on-phone copy of your data and the PIN.
 - Secrets never go in this repo. The only values in the built app are the Supabase URL and
   the public anon key, which are designed to be public.

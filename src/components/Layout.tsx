@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useData } from '../data/DataProvider'
 
 const tabs = [
   { to: '/', label: 'Home', icon: '🏠' },
@@ -9,8 +10,14 @@ const tabs = [
 ]
 
 export default function Layout() {
+  const { online, pendingSync } = useData()
   return (
     <div className="min-h-dvh">
+      {(!online || pendingSync > 0) && (
+        <div role="status" className="bg-sky-700 px-4 py-1.5 text-center text-sm text-white" style={{ paddingTop: 'max(0.375rem, env(safe-area-inset-top))' }}>
+          {!online ? '📴 Offline. Check-ins will sync later' : `⏳ Syncing ${pendingSync} check-in${pendingSync === 1 ? '' : 's'}…`}
+        </div>
+      )}
       <main>
         <Outlet />
       </main>

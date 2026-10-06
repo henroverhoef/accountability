@@ -4,12 +4,14 @@ import TimezoneSelect from '../components/TimezoneSelect'
 import PushToggle from '../components/PushToggle'
 import Toggle from '../components/Toggle'
 import ErrorText, { errorMessage } from '../components/ErrorText'
-import { supabase } from '../lib/supabase'
+import { deleteMyAccount, downloadBlob, exportMyData } from '../lib/account'
+import { clearPin, hasPin, setPin } from '../lib/pin'
+import { disablePush } from '../lib/push'
 import { shortTime } from '../lib/outcomes'
 import type { Profile } from '../lib/types'
 
 export default function Settings() {
-  const { profile, saveProfile, session } = useData()
+  const { profile, saveProfile, session, signOut } = useData()
   const [name, setName] = useState(profile?.display_name ?? '')
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
   const [saved, setSaved] = useState(false)
@@ -92,13 +94,23 @@ export default function Settings() {
         </div>
         <Toggle label="Prayers & encouragement from my groups" checked={profile.notify_encouragement} onChange={(v) => save({ notify_encouragement: v })} />
         <Toggle label="“I need help” requests (always, even in quiet hours)" checked={profile.notify_sos} onChange={(v) => save({ notify_sos: v })} />
+        <Toggle label="Sunday “week in review”" checked={profile.notify_weekly} onChange={(v) => save({ notify_weekly: v })} />
         <p className="muted">Per-habit reminders (e.g. quiet time at 06:00) are set when you edit a habit.</p>
+      </section>
+
+      <PinSettings />
+
+      <section className="card space-y-3">
+        <h2 className="h2">Your data</h2>
+        <p className="muted">Download everything Steadfast stores about you as a JSON file.</p>
+        <ExportButton />
       </section>
 
       <section className="card space-y-3">
         <h2 className="h2">Account</h2>
         <p className="muted">Signed in as {session?.user.email}</p>
-        <button className="btn-secondary w-full" onClick={() => supabase.auth.signOut()}>Sign out</button>
+        <button className="btn-secondary w-full" onClick={signOut}>Sign out</button>
+        <DeleteAccount onDeleted={signOut} />
       </section>
     </div>
   )
@@ -109,6 +121,117 @@ function Row({ label, htmlFor, children }: { label: string; htmlFor: string; chi
     <div className="flex items-center justify-between gap-3">
       <label htmlFor={htmlFor}>{label}</label>
       {children}
+    </div>
+  )
+}
+
+function PinSettings() {
+  const [enabled, setEnabled] = useState(hasPin)
+  const [step, setStep] = useState<'idle' | 'enter' | 'confirm'>('idle')
+  const [first, setFirst] = useState('')
+  const [value, setValue] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+
+  async function submit() {
+    if (step === 'enter') {
+      setFirst(value)
+      setValue('')
+      setStep('confirm')
+      return
+    }
+    if (value !== first) {
+      setMessage('The PINs didn’t match. Try again.')
+      setStep('enter')
+      setValue('')
+      return
+    }
+    await setPin(value)
+    setEnabled(true)
+    setStep('idle')
+    setValue('')
+    setMessage('PIN set. Steadfast will ask for it when you open the app.')
+  }
+
+  return (
+    <section className="card space-y-3">
+      <h2 className="h2">App lock</h2>
+      <p className="muted">Ask for a 4-digit PIN when the app opens, or after it’s been in the background for a minute. Stored only on this phone.</p>
+      {step === 'idle' ? (
+        enabled ? (
+          <div className="flex gap-2">
+            <button className="btn-secondary flex-1" onClick={() => { setStep('enter'); setMessage(null) }}>Change PIN</button>
+            <button className="btn-ghost flex-1" onClick={() => { clearPin(); setEnabled(false); setMessage('PIN removed.') }}>Remove PIN</button>
+          </div>
+        ) : (
+          <button className="btn-secondary w-full" onClick={() => { setStep('enter'); setMessage(null) }}>🔒 Set a PIN</button>
+        )
+      ) : (
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); submit() }}>
+          <label htmlFor="pin" className="sr-only">{step === 'enter' ? 'New PIN' : 'Repeat PIN'}</label>
+          <input id="pin" className="input text-center text-2xl tracking-[0.5em]" type="password" inputMode="numeric" autoComplete="off"
+            placeholder={step === 'enter' ? 'New PIN' : 'Repeat'} value={value} onChange={(e) => setValue(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+          <button className="btn-primary" disabled={value.length !== 4}>{step === 'enter' ? 'Next' : 'Save'}</button>
+        </form>
+      )}
+      {message && <p className="muted">{message}</p>}
+    </section>
+  )
+}
+
+function ExportButton() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <>
+      <button className="btn-secondary w-full" disabled={busy} onClick={async () => {
+        setBusy(true)
+        setError(null)
+        try {
+          downloadBlob(await exportMyData(), `steadfast-export-${new Date().toISOString().slice(0, 10)}.json`)
+        } catch (e) {
+          setError(errorMessage(e))
+        } finally {
+          setBusy(false)
+        }
+      }}>
+        {busy ? 'Preparing…' : '⬇️ Export my data'}
+      </button>
+      <ErrorText error={error} />
+    </>
+  )
+}
+
+function DeleteAccount({ onDeleted }: { onDeleted: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!open) return <button className="btn-ghost w-full text-rose-600" onClick={() => setOpen(true)}>Delete my account…</button>
+
+  return (
+    <div className="space-y-2 rounded-xl border-2 border-rose-300 p-3 dark:border-rose-800">
+      <p className="text-sm">This permanently deletes your account, habits, check-ins, notes, group memberships and messages. It cannot be undone. Consider exporting your data first.</p>
+      <label htmlFor="del" className="label">Type DELETE to confirm</label>
+      <input id="del" className="input" autoComplete="off" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+      <div className="flex gap-2">
+        <button className="btn-ghost flex-1" onClick={() => setOpen(false)}>Cancel</button>
+        <button className="btn-danger flex-1" disabled={busy || confirmText !== 'DELETE'} onClick={async () => {
+          setBusy(true)
+          setError(null)
+          try {
+            await disablePush().catch(() => {})
+            await deleteMyAccount()
+            await onDeleted()
+          } catch (e) {
+            setError(errorMessage(e))
+            setBusy(false)
+          }
+        }}>
+          Delete forever
+        </button>
+      </div>
+      <ErrorText error={error} />
     </div>
   )
 }
