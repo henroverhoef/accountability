@@ -53,6 +53,21 @@ variables → Actions**):
 | `SUPABASE_DB_PASSWORD` | the database password from when the project was created (reset it under Project Settings → Database if needed) |
 | `SUPABASE_ACCESS_TOKEN` | a token from <https://supabase.com/dashboard/account/tokens> |
 
+### Hosting on its own address (Vercel, recommended)
+
+GitHub Pages puts every app of yours on the same address (`henroverhoef.github.io`), so
+Chrome mixes up their install status and notification permission (e.g. with Beursie).
+Steadfast therefore lives on Vercel, at its own address:
+
+1. Go to <https://vercel.com/new> (sign in with GitHub).
+2. **Import** the `accountability` repository. Vercel recognises the settings from
+   `vercel.json`; just click **Deploy**.
+3. Optional: Project → Settings → Domains → rename it to something nice, e.g.
+   `steadfast-shofar.vercel.app`.
+
+Every push to `main` now updates the app on Vercel automatically. Use the Vercel address
+everywhere (install links, invites). The GitHub Pages copy keeps working but isn't needed.
+
 ### 5. Start your group
 
 1. Open the address on your phone and install it (see below).

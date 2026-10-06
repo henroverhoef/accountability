@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// GitHub Pages serves the site from https://<user>.github.io/<repo>/
-// so every asset path must start with the repo name. Change this if you rename the repo.
-const base = process.env.VITE_BASE ?? '/accountability/'
+// Where the app lives:
+//  - Vercel (the main home): its own address, e.g. https://steadfast.vercel.app/ → base "/"
+//  - GitHub Pages: https://<user>.github.io/<repo>/ → base "/<repo>/"
+const base = process.env.VITE_BASE ?? (process.env.VERCEL ? '/' : '/accountability/')
 
 export default defineConfig({
   base,
