@@ -90,6 +90,8 @@ export default function Settings() {
             <button className="mt-1 text-sm underline" onClick={() => save({ quiet_start: null, quiet_end: null })}>Clear quiet hours</button>
           )}
         </div>
+        <Toggle label="Prayers & encouragement from my groups" checked={profile.notify_encouragement} onChange={(v) => save({ notify_encouragement: v })} />
+        <Toggle label="“I need help” requests (always, even in quiet hours)" checked={profile.notify_sos} onChange={(v) => save({ notify_sos: v })} />
         <p className="muted">Per-habit reminders (e.g. quiet time at 06:00) are set when you edit a habit.</p>
       </section>
 

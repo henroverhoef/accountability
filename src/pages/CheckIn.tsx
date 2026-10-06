@@ -76,6 +76,7 @@ export default function CheckIn() {
             <footer className="muted mt-2">{result.verse.ref}</footer>
           </blockquote>
         )}
+        {result.verse && <Link to="/sos?mode=share" className="btn-secondary w-full">🤝 Tell my group / reach out to someone</Link>}
         <Link to="/" className="btn-primary w-full">Done</Link>
         <button className="btn-ghost w-full" onClick={() => setResult(null)}>Edit answers</button>
       </div>

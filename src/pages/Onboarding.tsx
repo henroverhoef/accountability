@@ -5,8 +5,9 @@ import ErrorText, { errorMessage } from '../components/ErrorText'
 import { TEMPLATES } from '../lib/templates'
 import { shortTime, TYPE_NAMES } from '../lib/outcomes'
 import PushToggle from '../components/PushToggle'
+import { JoinOrCreate } from './Groups'
 
-const STEPS = ['about', 'habits', 'notify', 'privacy'] as const
+const STEPS = ['about', 'habits', 'notify', 'privacy', 'group'] as const
 type Step = (typeof STEPS)[number]
 
 export default function Onboarding() {
@@ -127,10 +128,17 @@ export default function Onboarding() {
             <p>The app name, icon and notifications never mention what you’re working on.</p>
             <p>Group members can see whether you did your daily check-in, so they know when to reach out.</p>
           </div>
-          <p className="muted">Notifications, PIN lock and groups can be set up any time.</p>
-          <button className="btn-primary w-full" disabled={busy}
-            onClick={() => run(() => saveProfile({ onboarded: true }))}>
-            Let’s go
+          <button className="btn-primary w-full" onClick={next}>Continue</button>
+        </section>
+      )}
+
+      {step === 'group' && (
+        <section className="space-y-4">
+          <h1 className="h1">Walk together</h1>
+          <p className="muted">Got an invite code from a friend? Join their group. Or start one and invite a few trusted brothers. You can also do this later.</p>
+          <JoinOrCreate onDone={() => saveProfile({ onboarded: true })} />
+          <button className="btn-ghost w-full" disabled={busy} onClick={() => run(() => saveProfile({ onboarded: true }))}>
+            Skip for now
           </button>
         </section>
       )}

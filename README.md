@@ -19,6 +19,7 @@ data in a free **Supabase** project.
    3. [Set up sign-in emails](#3-set-up-sign-in-emails)
    4. [Put the keys in GitHub and turn on Pages](#4-put-the-keys-in-github-and-turn-on-pages)
    5. [Notifications and scheduled reminders](#5-notifications-and-scheduled-reminders)
+   6. [Groups](#6-groups)
 3. [Installing the app on a phone](#installing-the-app-on-a-phone)
 4. [Working on the code](#working-on-the-code)
 5. [Project layout](#project-layout)
@@ -192,6 +193,31 @@ the *public* key (Settings → Secrets and variables → Actions), then re-run t
 - Phones that uninstall the app are cleaned up automatically (the push service answers
   "gone").
 
+### 6. Groups
+
+Nothing extra to set up: run the Phase 3 migration (and redeploy the `push` function,
+which now also sends prayer / encouragement / SOS notifications):
+
+```bash
+npx supabase functions deploy push --use-api
+```
+
+How groups work:
+
+- Anyone can **start a group** (they become its admin) and share the **invite code** or
+  link. Others join with the code. People can be in several groups.
+- The admin can rename the group, make a new code (the old one stops working) and remove
+  members. If the admin leaves, the longest-standing member becomes admin.
+- **Sharing is per habit, per group** (Group → *Sharing* tab, or on a habit's page):
+  Private (default) · Check-in only · Result · Result + notes.
+- Everyone in a group sees whether each member has done today's check-in. Members who
+  haven't checked in for 3+ days are highlighted so others can reach out.
+- **🙏 Praying for you** and short messages (max 280 characters) send a notification. A
+  message to one person is only visible to the two of you.
+- **🆘 I need help** (Home screen) notifies chosen groups immediately, even during their
+  quiet hours, then shows a calming screen. To prevent accidents it can be sent to the
+  same group at most once every 10 minutes.
+
 ---
 
 ## Installing the app on a phone
@@ -231,6 +257,7 @@ npm run build                   # type-checks and builds into dist/
 src/
   App.tsx                 routes (which screen shows for which #/address)
   sw.ts                   service worker: offline cache + showing notifications
+  lib/groups.ts           groups, sharing and encouragement (database calls)
   lib/push.ts             turning notifications on/off, test notification
   data/DataProvider.tsx   loads/saves your profile, habits and check-ins
   pages/                  one file per screen
@@ -257,6 +284,13 @@ Common changes:
 
 - Every table has **Row Level Security**: the database itself refuses to show one
   person's data to another unless a rule explicitly allows it.
+- Other people can **never** read your habits, check-ins or profile directly. Group
+  members only get data through the `group_overview()` database function, which returns
+  for each habit exactly what you chose for that group: nothing, "checked in", the
+  result, or the result with tags and notes. Notes of habits that aren't shared as
+  "Result + notes" are never sent to anyone else's phone.
+- The privacy rules are tested against a real Postgres engine (see the commit history);
+  if you change `supabase/migrations`, keep them as strict.
 - Check-ins can only be written for today and the previous two days.
 - Notification text never mentions what a habit is about. Reminders for "avoid" habits
   never include the habit's name.

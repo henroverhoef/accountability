@@ -1,13 +1,15 @@
 // Edge Function "push": sends all of Steadfast's notifications.
 //
 //   {"type":"tick"}   – every 5 minutes from pg_cron: reminders, nudges, wind-down …
+//   {"type":"encouragement","id":…} – from a database trigger when someone prays,
+//                     sends a message or asks for help (SOS)
 //   {"type":"test"}   – from the Settings screen: "Send test notification" to yourself
 //
-// tick requests must carry the x-cron-secret header (the CRON_SECRET secret).
+// tick/encouragement requests must carry the x-cron-secret header (the CRON_SECRET secret).
 // test requests must carry the signed-in user's token (Authorization: Bearer …).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { addDays } from '../_shared/logic/dates.ts'
-import { dueReminders, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
+import { addDays, localNow } from '../_shared/logic/dates.ts'
+import { dueReminders, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
 import { claimNotification, sendToUser, vapidFromEnv } from '../_shared/sender.ts'
 import type { VapidKeys } from '../_shared/logic/webpush.ts'
 
@@ -36,6 +38,11 @@ Deno.serve(async (req) => {
     if (body.type === 'tick') {
       if (!fromCron) return json({ error: 'forbidden' }, 403)
       return json(await tick(admin, vapid))
+    }
+
+    if (body.type === 'encouragement') {
+      if (!fromCron) return json({ error: 'forbidden' }, 403)
+      return json(await encouragement(admin, vapid, String(body.id)))
     }
 
     if (body.type === 'test') {
@@ -95,4 +102,48 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
     }
   }
   return { users: userIds.length, sent }
+}
+
+/** Someone prayed, sent a message or asked for help: notify the right people. */
+async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string) {
+  const { data: e, error } = await admin.from('encouragements').select('*').eq('id', id).single()
+  if (error || !e) return { sent: 0, error: 'not found' }
+
+  const { data: members } = await admin.from('group_members').select('user_id').eq('group_id', e.group_id)
+  const memberIds = (members ?? []).map((m) => m.user_id as string)
+  const recipients = e.to_user ? [e.to_user as string] : memberIds.filter((u) => u !== e.from_user)
+  const { data: profiles } = await admin.from('profiles').select('*').in('id', [...recipients, e.from_user])
+  const byId = new Map((profiles ?? []).map((p) => [p.id as string, p]))
+  const name = byId.get(e.from_user)?.display_name || 'Someone'
+
+  // Keep the text generic: it may show on a lock screen.
+  const body =
+    e.kind === 'sos'
+      ? `${name} is asking for prayer and support right now`
+      : e.kind === 'prayer'
+        ? `${name} is praying for you 🙏`
+        : e.to_user
+          ? `${name} sent you some encouragement`
+          : `${name} shared something with your group`
+
+  const now = new Date()
+  let sent = 0
+  for (const uid of recipients) {
+    const p = byId.get(uid)
+    if (!p || !memberIds.includes(uid)) continue
+    if (e.kind === 'sos') {
+      if (!p.notify_sos) continue // SOS ignores quiet hours on purpose
+    } else {
+      if (!p.notify_encouragement) continue
+      if (inQuietHours(localNow(now, p.timezone).minutes, p.quiet_start, p.quiet_end)) continue
+    }
+    if (!(await claimNotification(admin, uid, 'encouragement', id))) continue
+    sent += await sendToUser(admin, vapid, uid, {
+      title: e.kind === 'sos' ? 'Steadfast 🙏' : 'Steadfast',
+      body,
+      url: `#/groups/${e.group_id}`,
+      tag: e.kind === 'sos' ? `sos-${id}` : 'encouragement',
+    })
+  }
+  return { sent }
 }

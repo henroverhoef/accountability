@@ -2,12 +2,15 @@ import { Link } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import { dayProgress, habitStreak, honestyStreak } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
+import { useAsync } from '../components/useAsync'
+import { recentEncouragements } from '../lib/groups'
 
 export default function Home() {
   const { profile, activeHabits, checkins, today, yesterday } = useData()
   const todayProgress = dayProgress(activeHabits, checkins, today)
   const yesterdayProgress = dayProgress(activeHabits, checkins, yesterday)
   const honesty = honestyStreak(activeHabits, checkins, today)
+  const encouragement = useAsync(() => recentEncouragements(3), [])
 
   return (
     <div className="page space-y-4">
@@ -43,6 +46,24 @@ export default function Home() {
         </div>
       </section>
 
+      {encouragement.data && encouragement.data.length > 0 && (
+        <section className="card">
+          <h2 className="h2 mb-2">Encouragement</h2>
+          <ul className="space-y-2">
+            {encouragement.data.map((e) => (
+              <li key={e.id}>
+                <Link to={`/groups/${e.group_id}`} className="block text-sm">
+                  <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.kind === 'prayer' ? '🙏' : '✉️'}</span>{' '}
+                  <strong>{e.from_name}</strong>{' '}
+                  {e.kind === 'sos' ? 'asked for prayer' : e.kind === 'prayer' ? 'is praying for you' : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
+                  {e.message && <span className="muted block truncate">“{e.message}”</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {activeHabits.length > 0 && (
         <section className="card">
           <h2 className="h2 mb-2">Streaks</h2>
@@ -65,6 +86,10 @@ export default function Home() {
           </ul>
         </section>
       )}
+
+      <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-4 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+        🆘 I need help
+      </Link>
     </div>
   )
 }

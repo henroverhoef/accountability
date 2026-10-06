@@ -10,6 +10,10 @@ import Habits from './pages/Habits'
 import HabitDetail from './pages/HabitDetail'
 import HabitEdit from './pages/HabitEdit'
 import Settings from './pages/Settings'
+import Groups from './pages/Groups'
+import GroupDetail from './pages/GroupDetail'
+import Join from './pages/Join'
+import Sos from './pages/Sos'
 
 export default function App() {
   if (!isConfigured) return <NotConfigured />
@@ -48,6 +52,10 @@ function Gate() {
         <Route path="/habits/new" element={<HabitEdit />} />
         <Route path="/habits/:id" element={<HabitDetail />} />
         <Route path="/habits/:id/edit" element={<HabitEdit />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/groups/:id" element={<GroupDetail />} />
+        <Route path="/join/:code" element={<Join />} />
+        <Route path="/sos" element={<Sos />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

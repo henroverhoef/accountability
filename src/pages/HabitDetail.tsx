@@ -1,4 +1,9 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ShareSelect from '../components/ShareSelect'
+import ErrorText, { errorMessage } from '../components/ErrorText'
+import { useAsync } from '../components/useAsync'
+import { listMyGroups, listMyShares, setShare, type Visibility } from '../lib/groups'
 import { useData } from '../data/DataProvider'
 import Heatmap from '../components/Heatmap'
 import { addDays, habitStreak, type Outcome } from '../lib/logic'
@@ -62,6 +67,8 @@ export default function HabitDetail() {
         </ul>
       </section>
 
+      <Sharing habitId={habit.id} />
+
       {notes.length > 0 && (
         <section className="card">
           <h2 className="h2 mb-2">Recent notes</h2>
@@ -77,5 +84,32 @@ export default function HabitDetail() {
         </section>
       )}
     </div>
+  )
+}
+
+/** Per-group visibility for this habit. */
+function Sharing({ habitId }: { habitId: string }) {
+  const groups = useAsync(listMyGroups, [])
+  const shares = useAsync(listMyShares, [])
+  const [error, setError] = useState<string | null>(null)
+  if (!groups.data || groups.data.length === 0) return null
+  const current = (gid: string): Visibility =>
+    shares.data?.find((s) => s.habit_id === habitId && s.group_id === gid)?.visibility ?? 'private'
+
+  return (
+    <section className="card space-y-3">
+      <h2 className="h2">Sharing</h2>
+      {groups.data.map((g) => (
+        <div key={g.id}>
+          <label htmlFor={`share-${g.id}`} className="label">{g.name}</label>
+          <ShareSelect id={`share-${g.id}`} value={current(g.id)} disabled={!shares.data}
+            onChange={async (v) => {
+              setError(null)
+              try { await setShare(habitId, g.id, v); await shares.reload() } catch (e) { setError(errorMessage(e)) }
+            }} />
+        </div>
+      ))}
+      <ErrorText error={error} />
+    </section>
   )
 }
