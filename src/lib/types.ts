@@ -9,6 +9,12 @@ export interface Profile {
   nudge_delay_minutes: number
   morning_nudge_time: string
   onboarded: boolean
+  quiet_start: string | null
+  quiet_end: string | null
+  notify_reminders: boolean
+  notify_encouragement: boolean
+  notify_sos: boolean
+  notify_weekly: boolean
 }
 
 export type OutcomeLabels = Partial<Record<Outcome, string>>

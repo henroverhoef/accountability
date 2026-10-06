@@ -184,6 +184,25 @@ export default function HabitEdit() {
         </div>
       </fieldset>
 
+      <fieldset className="space-y-3">
+        <legend className="label">Reminder (optional)</legend>
+        <div className="flex items-center gap-2">
+          <label htmlFor="reminder" className="flex-1">Extra reminder for this habit</label>
+          <input id="reminder" type="time" className="input w-36" value={shortTime(form.reminder_time)} onChange={(e) => set({ reminder_time: e.target.value || null })} />
+          {form.reminder_time && <button type="button" className="btn-ghost px-2" aria-label="Remove reminder" onClick={() => set({ reminder_time: null })}>✕</button>}
+        </div>
+        {form.type === 'time' && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="wind" className="flex-1">Wind-down reminder before target</label>
+            <select id="wind" className="input w-36" value={form.wind_down_minutes ?? ''} onChange={(e) => set({ wind_down_minutes: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Off</option>
+              {[15, 30, 45, 60, 90].map((m) => <option key={m} value={m}>{m} min</option>)}
+            </select>
+          </div>
+        )}
+        <p className="muted">Reminders skip days you’ve already checked in.</p>
+      </fieldset>
+
       <ErrorText error={error} />
       <button className="btn-primary w-full" disabled={busy || !form.name.trim() || form.schedule_days.length === 0}>
         {busy ? 'Saving…' : 'Save'}

@@ -18,6 +18,7 @@ data in a free **Supabase** project.
    2. [Create the database tables (migrations)](#2-create-the-database-tables-migrations)
    3. [Set up sign-in emails](#3-set-up-sign-in-emails)
    4. [Put the keys in GitHub and turn on Pages](#4-put-the-keys-in-github-and-turn-on-pages)
+   5. [Notifications and scheduled reminders](#5-notifications-and-scheduled-reminders)
 3. [Installing the app on a phone](#installing-the-app-on-a-phone)
 4. [Working on the code](#working-on-the-code)
 5. [Project layout](#project-layout)
@@ -33,6 +34,8 @@ data in a free **Supabase** project.
           └──────────────►  Supabase
                               • Auth (email sign-in code)
                               • Postgres database (Row Level Security on every table)
+                              • pg_cron: every 5 min ──► Edge Function "push"
+                                                          └──► Web Push ──► phones
 ```
 
 - The app is in `src/` (React + TypeScript + Tailwind, built with Vite).
@@ -117,6 +120,78 @@ People sign in with a code sent by email. (On iPhone the installed app can't rec
 > If you rename the repository, the web address changes too. The workflow picks up the
 > new name automatically, but update the Supabase Site URL / Redirect URLs.
 
+### 5. Notifications and scheduled reminders
+
+Notifications use standard **Web Push**. You need a key pair (called *VAPID keys*): the
+public half goes into the app, the private half only into Supabase.
+
+**a) Generate the keys** (on any computer with Node.js):
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+It prints a *Public Key* and a *Private Key*. Also make up a long random password for
+the scheduler (the *cron secret*), e.g. with `openssl rand -hex 32`, or just mash the
+keyboard for 40+ characters.
+
+**b) Give the private values to Supabase** (Dashboard → **Edge Functions → Secrets**,
+or with the CLI):
+
+```bash
+npx supabase secrets set \
+  VAPID_PUBLIC_KEY="<public key>" \
+  VAPID_PRIVATE_KEY="<private key>" \
+  VAPID_SUBJECT="mailto:<your email>" \
+  CRON_SECRET="<your cron secret>"
+```
+
+**c) Deploy the Edge Function** (needs the Supabase CLI, linked as in step 2):
+
+```bash
+npx supabase functions deploy push --use-api
+```
+
+`supabase/config.toml` already tells Supabase not to require a login token for this
+function; it checks the cron secret or the user's token itself.
+
+**d) Tell the scheduler where to call.** The Phase 2 migration already switched on
+`pg_cron` and `pg_net` and created a job that runs every 5 minutes. It reads two values
+from Supabase **Vault** (encrypted storage). Run this once in the SQL Editor:
+
+```sql
+select vault.create_secret('https://YOUR-PROJECT-REF.supabase.co', 'project_url');
+select vault.create_secret('<your cron secret>', 'cron_secret');
+```
+
+(If the migration complained about extensions, enable **pg_cron** and **pg_net** under
+Database → Extensions and run the migration again.)
+
+**e) Give the public key to the app:** add a GitHub secret `VITE_VAPID_PUBLIC_KEY` with
+the *public* key (Settings → Secrets and variables → Actions), then re-run the deploy.
+
+**Checking it works**
+
+- In the app: Settings → **Turn on notifications** → **Send test**.
+- Supabase → **Integrations → Cron** (or Database → Cron Jobs) shows
+  `steadfast-reminders` running every 5 minutes.
+- Supabase → **Edge Functions → push → Logs** shows each run, e.g. `{"users":3,"sent":1}`.
+- SQL: `select * from net._http_response order by created desc limit 5;` shows the
+  scheduler's calls (status 200 is good, 403 means the cron secrets don't match).
+
+**How reminders work**
+
+- Every 5 minutes the server checks each person's reminder times *in their own
+  timezone*. A reminder is sent during the 30 minutes after its time, but only once
+  (recorded in `notification_log`), and only if you haven't already checked in.
+- Daily check-in reminder (default 21:30), a nudge if you still haven't (default 1 hour
+  later), and a morning nudge about yesterday (default 07:30).
+- Per-habit reminders and a "wind-down" reminder before a bedtime target are set when
+  editing a habit.
+- Quiet hours stop reminders during that period.
+- Phones that uninstall the app are cleaned up automatically (the push service answers
+  "gone").
+
 ---
 
 ## Installing the app on a phone
@@ -130,6 +205,9 @@ People sign in with a code sent by email. (On iPhone the installed app can't rec
 2. Tap the **Share** button (square with an arrow) → **Add to Home Screen** → **Add**.
 3. Open Steadfast **from the home screen icon**. Notifications only work when it's opened
    this way.
+4. In the app go to **Settings → Turn on notifications** and tap **Allow**.
+
+On Android, after installing, also go to Settings → Turn on notifications → Allow.
 
 ---
 
@@ -152,14 +230,17 @@ npm run build                   # type-checks and builds into dist/
 ```
 src/
   App.tsx                 routes (which screen shows for which #/address)
-  sw.ts                   service worker: offline cache
+  sw.ts                   service worker: offline cache + showing notifications
+  lib/push.ts             turning notifications on/off, test notification
   data/DataProvider.tsx   loads/saves your profile, habits and check-ins
   pages/                  one file per screen
   components/             reusable pieces (check-in card, heatmap, …)
   lib/                    templates, Bible verses, labels, Supabase client
 supabase/
   migrations/             database tables + security rules (run in order)
-  functions/_shared/logic pure rules shared by app and server (dates, streaks, …)
+  functions/push/         Edge Function that sends every notification
+  functions/_shared/      server helpers; logic/ = pure rules shared with the app
+                          (dates, streaks, reminder timing, web push encryption)
 tests/                    automated tests (npm test)
 .github/workflows/        automatic deploy to GitHub Pages
 ```
@@ -177,5 +258,8 @@ Common changes:
 - Every table has **Row Level Security**: the database itself refuses to show one
   person's data to another unless a rule explicitly allows it.
 - Check-ins can only be written for today and the previous two days.
+- Notification text never mentions what a habit is about. Reminders for "avoid" habits
+  never include the habit's name.
+- The VAPID private key and cron secret live only in Supabase secrets / Vault.
 - Secrets never go in this repo. The only values in the built app are the Supabase URL and
   the public anon key, which are designed to be public.

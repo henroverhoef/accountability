@@ -1,2 +1,7 @@
 # Minimal Supabase CLI config. Only used when you run `supabase` commands from this folder.
 project_id = "steadfast"
+
+# The push function checks its own secret (cron) or the user's token (test),
+# so Supabase's built-in JWT check is switched off for it.
+[functions.push]
+verify_jwt = false

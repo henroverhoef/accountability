@@ -3,9 +3,10 @@ import { useData } from '../data/DataProvider'
 import TimezoneSelect from '../components/TimezoneSelect'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import { TEMPLATES } from '../lib/templates'
-import { TYPE_NAMES } from '../lib/outcomes'
+import { shortTime, TYPE_NAMES } from '../lib/outcomes'
+import PushToggle from '../components/PushToggle'
 
-const STEPS = ['about', 'habits', 'privacy'] as const
+const STEPS = ['about', 'habits', 'notify', 'privacy'] as const
 type Step = (typeof STEPS)[number]
 
 export default function Onboarding() {
@@ -13,6 +14,7 @@ export default function Onboarding() {
   const [step, setStep] = useState<Step>('about')
   const [name, setName] = useState(profile?.display_name ?? '')
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
+  const [reminder, setReminder] = useState(shortTime(profile?.checkin_reminder_time) || '21:30')
   const [picked, setPicked] = useState<string[]>(['purity', 'quiet-time'])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +89,25 @@ export default function Onboarding() {
               next()
             })}>
             {busy ? 'Saving…' : 'Continue'}
+          </button>
+        </section>
+      )}
+
+      {step === 'notify' && (
+        <section className="space-y-4">
+          <h1 className="h1">Daily reminder</h1>
+          <p className="muted">When should we remind you to check in? Evenings work well for most people. If you forget, you can check in the next morning.</p>
+          <div>
+            <label htmlFor="remind" className="label">Check-in reminder</label>
+            <input id="remind" type="time" className="input" value={reminder} onChange={(e) => setReminder(e.target.value)} />
+          </div>
+          <div className="card">
+            <p className="mb-3 text-sm">Notifications are always discreet: just “Time for your evening check-in”, never what you’re working on.</p>
+            <PushToggle showTest={false} />
+          </div>
+          <button className="btn-primary w-full" disabled={busy || !reminder}
+            onClick={() => run(async () => { await saveProfile({ checkin_reminder_time: reminder }); next() })}>
+            Continue
           </button>
         </section>
       )}
