@@ -1,0 +1,2 @@
+# Minimal Supabase CLI config. Only used when you run `supabase` commands from this folder.
+project_id = "steadfast"
