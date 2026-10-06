@@ -14,53 +14,46 @@ code, and they're in. Each phone gets its own private account. A personal *login
 
 ---
 
-## Setup (about 10 minutes, once)
+## Setup
 
-GitHub does all the technical work: database tables, server functions, notification
-keys, Supabase settings and publishing the app. You only create a Supabase project and
-give GitHub three secrets.
+The Supabase project **steadfast** (`qvqbnwmcordnfcttdbkg`) is already set up: database
+tables and security rules, the two server functions (`push`, `login`), notification
+keys and the 5-minute reminder scheduler. The app's public Supabase address and key are
+in `.env.production`.
 
-### 1. Create a Supabase project
+What's left (a few clicks):
 
-1. Go to <https://supabase.com>, sign up (free) and click **New project**.
-2. Choose a name (e.g. `steadfast`) and a region close to you.
-3. **Database password:** click *Generate a password*, then **copy it somewhere safe**.
-   You need it in step 3.
-4. When the project is ready, look at the address bar: it looks like
-   `https://supabase.com/dashboard/project/abcdefghijklmnopqrst`.
-   The 20 letters at the end are your **project ref**.
+### 1. Allow joining without email (Supabase)
 
-### 2. Create a Supabase access token
+Supabase → project **steadfast** → **Authentication → Sign In / Providers** (or
+*Providers*) → switch on **Allow anonymous sign-ins** → **Save**.
 
-Go to <https://supabase.com/dashboard/account/tokens> → **Generate new token** → name it
-`github` → copy the token (starts with `sbp_`).
+### 2. GitHub settings
 
-### 3. Add three secrets to GitHub
+1. **Settings → General → Default branch** → choose **main**.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
 
-In this GitHub repository: **Settings → Secrets and variables → Actions → New
-repository secret**. Add:
+### 3. Publish
 
-| Name | Value |
-|------|-------|
-| `SUPABASE_PROJECT_REF` | the 20 letters from step 1 |
-| `SUPABASE_DB_PASSWORD` | the database password from step 1 |
-| `SUPABASE_ACCESS_TOKEN` | the token from step 2 |
-
-### 4. Turn on GitHub Pages
-
-**Settings → Pages → Build and deployment → Source: GitHub Actions.**
-
-### 5. Run it
-
-Go to **Actions → Deploy → Run workflow** (it also runs by itself every time something
-is pushed to `main`). After 2–3 minutes it's green ✅ and the app is live at:
+**Actions → Deploy → Run workflow** (it also runs by itself whenever something is
+pushed to `main`). After 1–2 minutes it's green ✅ and the app is live at:
 
 **https://henroverhoef.github.io/accountability/**
 
-That's it. If a step goes red ❌, click it to see the message. Usually a secret is
-missing or mistyped.
+### 4. (Optional) Automatic Supabase updates
 
-### 6. Start your group
+When the database or server functions change in this repo, they need to be applied to
+Supabase. Either ask Claude (with the Supabase connector) to apply them, or let GitHub
+do it automatically by adding three repository secrets (**Settings → Secrets and
+variables → Actions**):
+
+| Name | Value |
+|------|-------|
+| `SUPABASE_PROJECT_REF` | `qvqbnwmcordnfcttdbkg` |
+| `SUPABASE_DB_PASSWORD` | the database password from when the project was created (reset it under Project Settings → Database if needed) |
+| `SUPABASE_ACCESS_TOKEN` | a token from <https://supabase.com/dashboard/account/tokens> |
+
+### 5. Start your group
 
 1. Open the address on your phone and install it (see below).
 2. Choose **Start a new group**, enter your name and a group name.
@@ -202,9 +195,11 @@ Common changes:
   keep it private.
 - The server's notification keys and scheduler secret are created automatically and
   kept in a table (`app_secrets`) that only the server can read.
-- The `SUPABASE_ACCESS_TOKEN` GitHub secret can manage your Supabase account. GitHub keeps
-  it encrypted; only the deploy workflow uses it. You can revoke it any time on the
-  Supabase tokens page (deploys then stop until you add a new one).
+- `.env.production` contains only the project's *public* address and publishable key,
+  which every visitor's browser receives anyway; the database rules protect the data.
+- If you add the optional `SUPABASE_ACCESS_TOKEN` GitHub secret: it can manage your
+  Supabase account. GitHub keeps it encrypted and only the deploy workflow uses it; you
+  can revoke it any time on the Supabase tokens page.
 - Signing out removes the on-phone copy of your data and the PIN.
 - Secrets never go in this repo. The only values in the built app are the Supabase URL and
   the public anon key, which are designed to be public.
@@ -213,9 +208,8 @@ Common changes:
 
 ## Troubleshooting
 
-- **"The app's setup isn't finished yet (anonymous sign-ins is off)"**: the workflow
-  normally switches this on. If not: Supabase → **Authentication → Sign In / Providers →
-  Allow anonymous sign-ins** → on.
+- **"The app's setup isn't finished yet (anonymous sign-ins is off)"**: Supabase →
+  **Authentication → Sign In / Providers → Allow anonymous sign-ins** → on (setup step 1).
 - **Notifications don't arrive**: Settings → *Send test*. If that fails, check
   Supabase → Edge Functions → `push` → Logs. On iPhone the app must be opened from the
   home screen icon.
@@ -223,4 +217,5 @@ Common changes:
   They can join again with the group code as a new member (an admin can remove the old
   one under Group → Invite).
 - **Changing the database**: add a new file in `supabase/migrations/` (never edit one
-  that has already run). The workflow applies new files automatically.
+  that has already run). It's applied automatically if the optional secrets are set
+  (setup step 4); otherwise apply it in the Supabase SQL Editor or ask Claude.

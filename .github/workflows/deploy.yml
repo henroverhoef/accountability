@@ -1,14 +1,13 @@
-# Does ALL the setup and deployment, every time you push to main:
-#   1. runs the tests
-#   2. updates the Supabase database (new files in supabase/migrations)
-#   3. deploys the server functions (notifications, login codes)
-#   4. switches on the Supabase setting the app needs (anonymous sign-ins)
-#   5. builds the app and publishes it on GitHub Pages
+# Builds the app and publishes it on GitHub Pages every time you push to main.
 #
-# It needs three repository secrets (Settings → Secrets and variables → Actions):
-#   SUPABASE_PROJECT_REF   – the 20-letter id in your Supabase project's URL
-#   SUPABASE_DB_PASSWORD   – the database password you chose when creating the project
+# The app's (public) Supabase address and key are in .env.production.
+#
+# OPTIONAL: with these three repository secrets it also updates Supabase automatically
+# (new database migrations, server functions, the anonymous sign-in setting):
+#   SUPABASE_PROJECT_REF   – qvqbnwmcordnfcttdbkg
+#   SUPABASE_DB_PASSWORD   – the database password chosen when creating the project
 #   SUPABASE_ACCESS_TOKEN  – from https://supabase.com/dashboard/account/tokens
+# Without them, Supabase changes are applied by hand (or by Claude via the Supabase connector).
 name: Deploy
 
 on:
@@ -33,15 +32,13 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
-      - name: Check the secrets are set
+      - name: Is automatic Supabase updating set up?
+        id: supa
         run: |
-          missing=""
-          [ -z "$PROJECT_REF" ] && missing="$missing SUPABASE_PROJECT_REF"
-          [ -z "$SUPABASE_ACCESS_TOKEN" ] && missing="$missing SUPABASE_ACCESS_TOKEN"
-          [ -z "$SUPABASE_DB_PASSWORD" ] && missing="$missing SUPABASE_DB_PASSWORD"
-          if [ -n "$missing" ]; then
-            echo "::error::Missing repository secrets:$missing. See the README, step 3."
-            exit 1
+          if [ -n "$PROJECT_REF" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_DB_PASSWORD" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Supabase secrets not set: only building the app (that's fine)."
           fi
 
       - uses: actions/checkout@v4
@@ -54,18 +51,22 @@ jobs:
       - run: npm test
 
       - uses: supabase/setup-cli@v1
+        if: steps.supa.outputs.enabled == 'true'
         with:
           version: latest
 
       - name: Update the database
+        if: steps.supa.outputs.enabled == 'true'
         run: |
           supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           supabase db push --password "$SUPABASE_DB_PASSWORD" --yes
 
       - name: Deploy server functions
+        if: steps.supa.outputs.enabled == 'true'
         run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api --yes
 
       - name: Supabase settings
+        if: steps.supa.outputs.enabled == 'true'
         run: |
           # People join with just their name + a group code: this needs "anonymous sign-ins".
           curl -fsS -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
@@ -74,29 +75,17 @@ jobs:
           # Contact address included with notifications (required by Apple/Google push services).
           supabase secrets set --project-ref "$PROJECT_REF" VAPID_SUBJECT="https://${{ github.repository_owner }}.github.io"
 
-      - name: Get the app's public Supabase key
-        id: keys
-        run: |
-          key=$(curl -fsS "https://api.supabase.com/v1/projects/$PROJECT_REF/api-keys" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | jq -r '([.[] | select(.name == "anon")][0].api_key) // ([.[] | select(.type == "publishable")][0].api_key)')
-          if [ -z "$key" ] || [ "$key" = "null" ]; then
-            echo "::error::Could not read the project's anon key. Is SUPABASE_PROJECT_REF correct?"
-            exit 1
-          fi
-          echo "anon=$key" >> "$GITHUB_OUTPUT"
-
       - name: Wake the notification function (it creates its own keys the first time)
+        if: steps.supa.outputs.enabled == 'true'
         run: |
           curl -fsS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/push" \
-            -H "Content-Type: application/json" -H "apikey: ${{ steps.keys.outputs.anon }}" \
+            -H "Content-Type: application/json" \
             -d '{"type":"config"}' > /dev/null \
             || echo "::warning::The push function didn't answer yet; it will set itself up on first use."
 
       - name: Build the app
         run: npm run build
         env:
-          VITE_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
-          VITE_SUPABASE_ANON_KEY: ${{ steps.keys.outputs.anon }}
           # The site lives at https://<user>.github.io/<repo-name>/
           VITE_BASE: /${{ github.event.repository.name }}/
 
