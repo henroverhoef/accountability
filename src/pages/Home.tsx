@@ -39,6 +39,10 @@ export default function Home() {
         )}
       </section>
 
+      <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-3 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+        🆘 I need help
+      </Link>
+
       {profile && !profile.has_login_code && (
         <Link to="/settings" className="card block border-l-4 border-amber-400 text-sm">
           🔑 <strong>Save a login code</strong> so you can get back into your account on a new phone. Tap here, then “Login code”.
@@ -96,10 +100,6 @@ export default function Home() {
       )}
 
       <Link to="/summary" className="btn-secondary w-full">📊 Week in review</Link>
-
-      <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-4 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
-        🆘 I need help
-      </Link>
     </div>
   )
 }
