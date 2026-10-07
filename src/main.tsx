@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import './index.css'
+import './lib/install' // start listening for the browser's "can install" signal early
 import App from './App'
 
 // Install/update the service worker (offline support + notifications).

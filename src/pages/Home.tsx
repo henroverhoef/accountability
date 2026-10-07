@@ -4,6 +4,7 @@ import { dayProgress, habitStreak, honestyStreak } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
 import { recentEncouragements } from '../lib/groups'
+import QuickTip from '../components/QuickTip'
 
 export default function Home() {
   const { profile, activeHabits, checkins, today, yesterday } = useData()
@@ -14,6 +15,7 @@ export default function Home() {
 
   return (
     <div className="page space-y-4">
+      <QuickTip />
       <header>
         <p className="muted">{formatDate(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <h1 className="h1">Hi {profile?.display_name || 'friend'}</h1>

@@ -16,6 +16,7 @@ export interface Profile {
   notify_sos: boolean
   notify_weekly: boolean
   has_login_code: boolean
+  quick_tip_seen: boolean
 }
 
 export type OutcomeLabels = Partial<Record<Outcome, string>>

@@ -108,6 +108,13 @@ export default function Settings() {
       <PinSettings />
 
       <section className="card space-y-3">
+        <h2 className="h2">Help</h2>
+        <button className="btn-secondary w-full" onClick={async () => { await save({ quick_tip_seen: false }); window.location.hash = '#/' }}>
+          💡 Show the quick tip again (install & notifications)
+        </button>
+      </section>
+
+      <section className="card space-y-3">
         <h2 className="h2">Your data</h2>
         <p className="muted">Download everything Steadfast stores about you as a JSON file.</p>
         <ExportButton />

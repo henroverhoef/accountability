@@ -96,13 +96,13 @@ export default function Onboarding() {
         <section className="space-y-4">
           <h1 className="h1">Your privacy</h1>
           <div className="card space-y-3 text-sm leading-relaxed">
-            <p>🔒 <strong>Everything is private by default.</strong> Your habits, answers and notes are only visible to you.</p>
-            <p>👥 You choose <strong>per habit</strong> what your group may see (on the group’s <em>Sharing</em> tab):</p>
+            <p>👥 <strong>Your group walks with you.</strong> By default your group sees how each habit went, plus your tags and notes. Nobody outside your group can see anything.</p>
+            <p>🔒 You can change this <strong>per habit</strong> at any time (group → <em>Sharing</em> tab):</p>
             <ul className="ml-5 list-disc space-y-1">
               <li><strong>Private</strong>: nothing about this habit.</li>
               <li><strong>Check-in only</strong>: that you checked in, not how it went.</li>
               <li><strong>Result</strong>: how it went and your streak.</li>
-              <li><strong>Result + notes</strong>: also your tags and notes.</li>
+              <li><strong>Result + notes</strong> (default): also your tags and notes.</li>
             </ul>
             <p>The app name, icon and notifications never mention what you’re working on.</p>
             <p>Your group can see whether you did your daily check-in, so they know when to reach out.</p>

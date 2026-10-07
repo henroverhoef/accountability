@@ -278,7 +278,7 @@ function MySharing({ groupId, onChange }: { groupId: string; onChange: () => voi
 
   return (
     <div className="space-y-3">
-      <p className="muted">Choose what this group sees for each habit. Everything starts private. Your group always sees whether you’ve done your daily check-in.</p>
+      <p className="muted">Choose what this group sees for each habit. New habits start as “Result + notes”; pick “Private” to keep one to yourself. Your group always sees whether you’ve done your daily check-in.</p>
       <ErrorText error={error} />
       {activeHabits.map((h) => (
         <div key={h.id} className="card">

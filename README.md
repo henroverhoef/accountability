@@ -96,6 +96,8 @@ choose **I already use Steadfast** and type it in.
 
 ## Other features
 
+- **Quick tip**: shown once after setup, explaining how to install the app and turn on
+  notifications (Settings → Help shows it again).
 - **Weekly review** (Home → Week in review): days fully checked in, outcomes per habit,
   streaks, and the tags that came up most on harder days. Personal only; there are no
   leaderboards. A notification "Your week in review is ready" comes on Sunday at 19:00
@@ -114,7 +116,8 @@ choose **I already use Steadfast** and type it in.
   yet: evening reminder (default 21:30), a nudge an hour later, a morning nudge about
   yesterday, per-habit reminders and a wind-down reminder before a bedtime target.
 - **Groups**: the creator is admin (rename, new invite code, remove members). Sharing
-  is per habit, per group: Private (default) · Check-in only · Result · Result + notes.
+  is per habit, per group: Private · Check-in only · Result · Result + notes (default:
+  joining a group or adding a habit shares it as Result + notes; change it any time).
   Members who haven't checked in for 3+ days are highlighted. 🆘 requests reach the
   group even in their quiet hours, at most once per 10 minutes per group.
 

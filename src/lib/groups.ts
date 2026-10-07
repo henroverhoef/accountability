@@ -9,7 +9,7 @@ export const VISIBILITY_LABELS: Record<Visibility, string> = {
   private: 'Private',
   checkin: 'Check-in only',
   result: 'Result',
-  notes: 'Result + notes',
+  notes: 'Result + notes (default)',
 }
 
 export const VISIBILITY_HELP: Record<Visibility, string> = {
