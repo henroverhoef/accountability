@@ -6,7 +6,17 @@ import './lib/install' // start listening for the browser's "can install" signal
 import App from './App'
 
 // Install/update the service worker (offline support + notifications).
-registerSW({ immediate: true })
+// An installed app can stay open in the background for days, so also look for a new
+// version whenever it comes back to the screen (and hourly); the page then reloads itself.
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, reg) {
+    if (!reg) return
+    const check = () => { if (navigator.onLine) reg.update().catch(() => {}) }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
+    setInterval(check, 60 * 60 * 1000)
+  },
+})
 
 // Make sure the offline copy is complete (another app on this address may have cleared it).
 navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage({ type: 'repair-offline-cache' }))
