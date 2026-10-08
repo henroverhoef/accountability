@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import CheckinCard from '../components/CheckinCard'
 import ErrorText, { errorMessage } from '../components/ErrorText'
-import { addDays, honestyStreak, isDue } from '../lib/logic'
+import { addDays, dayProgress, honestyStreak, isDue } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { ENCOURAGEMENTS, GRACE_VERSES, pickRandom } from '../lib/verses'
 import type { Checkin } from '../lib/types'
@@ -14,12 +14,16 @@ export default function CheckIn() {
   const { activeHabits, checkins, today, saveCheckins } = useData()
   const [params, setParams] = useSearchParams()
 
-  // Which day are we checking in for? Today, yesterday or the day before.
-  const days = [today, addDays(today, -1), addDays(today, -2)]
+  // Which day are we checking in for? Today, or last night if you missed it.
+  // (Further back isn't possible: the database refuses it too.)
+  const yesterday = addDays(today, -1)
+  const days = [today, yesterday]
   const dayParam = params.get('day')
-  const date = dayParam === 'yesterday' ? days[1] : dayParam && days.includes(dayParam) ? dayParam : today
+  const date = dayParam === 'yesterday' || dayParam === yesterday ? yesterday : today
+  const lastNightOpen = (() => { const p = dayProgress(activeHabits, checkins, yesterday); return p.due > 0 && !p.complete })()
 
-  const dueHabits = activeHabits.filter((h) => isDue({ ...h, start_date: addDays(h.start_date, -2) }, date))
+  // A habit added today can still be filled in for last night.
+  const dueHabits = activeHabits.filter((h) => isDue({ ...h, start_date: addDays(h.start_date, -1) }, date))
   const existing = useMemo(() => {
     const map: Drafts = {}
     for (const c of checkins) if (c.date === date) map[c.habit_id] = c
@@ -94,11 +98,18 @@ export default function CheckIn() {
         {days.map((d, i) => (
           <button key={d} role="tab" aria-selected={d === date}
             className={d === date ? 'chip-on flex-1 justify-center' : 'chip-off flex-1 justify-center'}
-            onClick={() => setParams(i === 0 ? {} : { day: d }, { replace: true })}>
-            {i === 0 ? 'Today' : i === 1 ? 'Yesterday' : formatDate(d, { weekday: 'short' })}
+            onClick={() => setParams(i === 0 ? {} : { day: 'yesterday' }, { replace: true })}>
+            {i === 0 ? 'Today' : `Last night (${formatDate(d, { weekday: 'short' })})`}
+            {i === 1 && lastNightOpen && <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-rose-500" aria-label="not finished" />}
           </button>
         ))}
       </div>
+
+      {date === yesterday && (
+        <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+          🌅 Catching up on last night ({formatDate(yesterday, { weekday: 'long' })}). Your group will see it in the feed. You can do this until midnight tonight.
+        </p>
+      )}
 
       {dueHabits.length === 0 ? (
         <div className="card text-center">

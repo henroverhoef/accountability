@@ -9,7 +9,7 @@ import {
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
 import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
-import { formatDate, outcomeLabel, OUTCOME_STYLES } from '../lib/outcomes'
+import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
 
 type Tab = 'members' | 'feed' | 'sharing' | 'invite'
 
@@ -74,7 +74,7 @@ function GroupHeader({ o, onRenamed }: { o: GroupOverview; onRenamed: () => void
 
 // ---------- members ---------------------------------------------------------
 
-function daysSinceCheckin(m: GroupMember): number {
+export function daysSinceCheckin(m: GroupMember): number {
   const since = m.last_checkin_date ?? m.joined_at.slice(0, 10)
   return Math.max(0, daysBetween(since, m.today))
 }
@@ -88,10 +88,11 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
   return (
     <li className={`card space-y-3 ${needsLove ? 'ring-2 ring-amber-400' : ''}`}>
       <div className="flex items-center gap-2">
-        <span className="flex-1 text-lg font-semibold">
+        <Link to={`/groups/${o.group.id}/member/${m.user_id}`} className="flex-1 text-lg font-semibold">
           {m.display_name || 'Someone'} {isMe && <span className="muted">(you)</span>}
           {m.role === 'admin' && <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-700">admin</span>}
-        </span>
+          <span className="ml-1 text-slate-400" aria-hidden>›</span>
+        </Link>
         <span className="text-sm">
           {m.checked_in_today === true ? '✅ Checked in' : m.checked_in_today === false ? '⏳ Not yet' : '· Nothing due'}
         </span>
@@ -109,12 +110,16 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
         </ul>
       )}
 
+      <Link to={`/groups/${o.group.id}/member/${m.user_id}`} className="block text-sm font-medium text-amber-700 dark:text-amber-400">
+        See {isMe ? 'what the group sees of you' : 'check-ins, tags and notes'} ›
+      </Link>
+
       {!isMe && <EncourageButtons groupId={o.group.id} toUser={m.user_id} onSent={onChange} />}
     </li>
   )
 }
 
-function SharedHabitRow({ habit, checkins, today }: { habit: SharedHabit; checkins: SharedCheckin[]; today: string }) {
+export function SharedHabitRow({ habit, checkins, today }: { habit: SharedHabit; checkins: SharedCheckin[]; today: string }) {
   const mine = checkins.filter((c) => c.habit_id === habit.id)
   const todays = mine.find((c) => c.date === today)
   const showResult = habit.visibility !== 'checkin'
@@ -125,17 +130,30 @@ function SharedHabitRow({ habit, checkins, today }: { habit: SharedHabit; checki
     <li className="flex items-center gap-2 text-sm">
       <span aria-hidden>{habit.icon}</span>
       <span className="flex-1">{habit.name}</span>
-      {todays ? (
-        todays.outcome ? (
-          <span className="inline-flex items-center gap-1"><span className={`h-2.5 w-2.5 rounded-full ${OUTCOME_STYLES[todays.outcome].dot}`} />{outcomeLabel(habit, todays.outcome)}</span>
-        ) : <span>✓ checked in</span>
-      ) : <span className="muted">not yet</span>}
+      {todays ? <AnswerBadge habit={habit} checkin={todays} /> : <span className="muted">not yet</span>}
       {streak !== null && <span className="w-12 text-right font-semibold">🔥{streak}</span>}
     </li>
   )
 }
 
-function EncourageButtons({ groupId, toUser, checkinId, onSent }: { groupId: string; toUser: string; checkinId?: string; onSent: () => void }) {
+/** A coloured dot + the answer ("Clean", "7/10", "✓ checked in" when the result is private). */
+export function AnswerBadge({ habit, checkin }: { habit: SharedHabit; checkin: SharedCheckin }) {
+  if (!checkin.outcome) return <span>✓ checked in</span>
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <span className={`h-2.5 w-2.5 rounded-full ${OUTCOME_STYLES[checkin.outcome].dot}`} />
+      {describeAnswer(habit, checkin)}
+    </span>
+  )
+}
+
+/** Was this check-in first saved on a later day than the day it's about? */
+export function caughtUpLater(c: SharedCheckin): boolean {
+  if (!c.created_at) return false
+  return new Date(c.created_at).toLocaleDateString('en-CA') > c.date
+}
+
+export function EncourageButtons({ groupId, toUser, checkinId, onSent }: { groupId: string; toUser: string; checkinId?: string; onSent: () => void }) {
   const [writing, setWriting] = useState(false)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -240,10 +258,12 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
             <li key={c.id} className="card space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span aria-hidden>{h.icon}</span>
-                <span className="flex-1"><strong>{nameOf(c.user_id)}</strong> · {h.name} · {formatDate(c.date)}</span>
-                {c.outcome ? (
-                  <span className="inline-flex items-center gap-1"><span className={`h-2.5 w-2.5 rounded-full ${OUTCOME_STYLES[c.outcome].dot}`} />{outcomeLabel(h, c.outcome)}</span>
-                ) : <span>✓ checked in</span>}
+                <span className="flex-1">
+                  <Link to={`/groups/${o.group.id}/member/${c.user_id}`} className="font-semibold underline-offset-2 hover:underline">{nameOf(c.user_id)}</Link>
+                  {' '}· {h.name} · {formatDate(c.date)}
+                  {caughtUpLater(c) && <span className="muted"> · caught up next morning</span>}
+                </span>
+                <AnswerBadge habit={h} checkin={c} />
               </div>
               {c.tags.length > 0 && <div className="muted">{c.tags.join(', ')}</div>}
               {c.note && <p className="whitespace-pre-wrap">{c.note}</p>}

@@ -38,6 +38,7 @@ export interface Habit {
   tags: string[]
   reminder_time: string | null
   wind_down_minutes: number | null
+  question: string | null // for "score out of 10" habits, e.g. "How thankful was I today?"
   archived: boolean
   sort_order: number
 }

@@ -21,6 +21,17 @@ export default function Home() {
         <h1 className="h1">Hi {profile?.display_name || 'friend'}</h1>
       </header>
 
+      {yesterdayProgress.due > 0 && !yesterdayProgress.complete && (
+        <section className="card space-y-3 border-l-4 border-amber-400">
+          <p className="text-lg font-semibold">🌅 Last night’s check-in is still open</p>
+          <p className="muted">
+            Missed it? No problem. Honesty counts the next morning too
+            {yesterdayProgress.done > 0 ? ` (${yesterdayProgress.done} of ${yesterdayProgress.due} done)` : ''}. Open until midnight tonight.
+          </p>
+          <Link to="/checkin?day=yesterday" className="btn-primary w-full">Catch up on last night</Link>
+        </section>
+      )}
+
       <section className="card space-y-3">
         {todayProgress.due === 0 ? (
           <p>Nothing scheduled today. Rest well.</p>
@@ -34,9 +45,6 @@ export default function Home() {
         <Link to="/checkin" className="btn-primary w-full py-4 text-lg">
           {todayProgress.complete ? 'Review check-in' : 'Check in'}
         </Link>
-        {yesterdayProgress.due > 0 && !yesterdayProgress.complete && (
-          <Link to="/checkin?day=yesterday" className="btn-secondary w-full">Check in for yesterday</Link>
-        )}
       </section>
 
       <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-3 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">

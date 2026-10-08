@@ -1,7 +1,7 @@
 // Pure rules about habits and check-ins (no database, no UI).
 import { timeToMinutes, weekdayOf } from './dates.ts'
 
-export type HabitType = 'avoid' | 'done' | 'time' | 'amount'
+export type HabitType = 'avoid' | 'done' | 'time' | 'amount' | 'scale'
 /** good = green, mid = amber, bad = red. */
 export type Outcome = 'good' | 'mid' | 'bad'
 
@@ -56,4 +56,14 @@ export function evaluateAmount(
   if (target === null || target === undefined) return 'good'
   if (direction === 'at_most') return value <= target ? 'good' : 'bad'
   return value >= target ? 'good' : 'bad'
+}
+
+/**
+ * Score out of 10 (e.g. "How thankful was I today?"):
+ * 7–10 = good (green), 4–6 = mixed (amber), 1–3 = hard (red).
+ */
+export function evaluateScale(score: number): Outcome {
+  if (score >= 7) return 'good'
+  if (score >= 4) return 'mid'
+  return 'bad'
 }

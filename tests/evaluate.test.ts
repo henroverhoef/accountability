@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateAmount, evaluateTime } from '../src/lib/logic'
+import { evaluateAmount, evaluateScale, evaluateTime } from '../src/lib/logic'
 
 describe('evaluateTime (target is "at or before")', () => {
   it('on time or early is success', () => {
@@ -37,5 +37,13 @@ describe('evaluateAmount', () => {
   })
   it('no target means any entry counts', () => {
     expect(evaluateAmount(0, null, null)).toBe('good')
+  })
+})
+
+describe('evaluateScale (score out of 10)', () => {
+  it('7–10 is good, 4–6 mixed, 1–3 hard', () => {
+    expect([10, 7].map(evaluateScale)).toEqual(['good', 'good'])
+    expect([6, 4].map(evaluateScale)).toEqual(['mid', 'mid'])
+    expect([3, 1].map(evaluateScale)).toEqual(['bad', 'bad'])
   })
 })

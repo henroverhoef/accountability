@@ -77,7 +77,7 @@ choose **I already use Steadfast** and type it in.
 ## Testing on your phone (checklist)
 
 1. **Basics:** install, start a group, pick habits, tap **Check in**, answer, **Save**.
-   Try *Slipped*: you should see a verse and a "reach out" button. Check **Yesterday** too.
+   Try *Slipped*: you should see a verse and a "reach out" button. Check **Last night** too.
    Habits → tap one → the calendar shows your days.
 2. **Notifications:** Settings → **Turn on notifications** → **Send test**. Then set the
    evening reminder ~10 minutes ahead and don't check in. It arrives within 5 minutes
@@ -96,6 +96,15 @@ choose **I already use Steadfast** and type it in.
 
 ## Other features
 
+- **Missed last night?** Home shows "Last night's check-in is still open" until midnight,
+  and a morning reminder (07:30 by default) points to it. Catch-up check-ins appear in the
+  group feed marked "caught up next morning". Anything older can't be filled in.
+- **Score out of 10** habits (e.g. Thankfulness: "How thankful was I today?"): answer with
+  a slider. 7–10 counts as a strong day (green), 4–6 mixed (amber), 1–3 hard (red);
+  habit pages and the weekly review show the average.
+- **Member details**: in a group, tap someone's name to see their shared habits, a
+  6-week calendar, and the last two weeks of check-ins with tags and notes (only what
+  they share with that group).
 - **Quick tip**: shown once after setup, explaining how to install the app and turn on
   notifications (Settings → Help shows it again).
 - **Weekly review** (Home → Week in review): days fully checked in, outcomes per habit,
@@ -182,7 +191,7 @@ Common changes:
   "Result + notes" are never sent to anyone else's phone.
 - The privacy rules are tested against a real Postgres engine (see the commit history);
   if you change `supabase/migrations`, keep them as strict.
-- Check-ins can only be written for today and the previous two days.
+- Check-ins can only be written for today and last night (the database enforces this).
 - Notification text never mentions what a habit is about. Reminders for "avoid" habits
   never include the habit's name.
 - Accounts have no email or password. Each phone holds its own sign-in. Login codes are

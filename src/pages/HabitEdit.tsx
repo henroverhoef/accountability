@@ -42,10 +42,15 @@ export default function HabitEdit() {
         target_direction: form.type === 'amount' ? form.target_direction || 'at_least' : null,
         unit: form.type === 'amount' ? form.unit?.trim() || null : null,
         wind_down_minutes: form.type === 'time' ? form.wind_down_minutes : null,
+        question: form.type === 'scale' ? form.question?.trim() || null : null,
       }
       // Never send read-only columns back to the database.
-      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes } = clean
-      const fields = { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes }
+      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, question } = clean
+      const fields = {
+        name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes,
+        // only score habits have a question
+        ...(type === 'scale' ? { question } : {}),
+      } as HabitDraft
       if (existing) {
         await updateHabit(existing.id, fields)
         navigate(`/habits/${existing.id}`, { replace: true })
@@ -132,6 +137,15 @@ export default function HabitEdit() {
             <label htmlFor="grace" className="label">Grace minutes</label>
             <input id="grace" type="number" min={0} max={120} className="input" value={form.grace_minutes} onChange={(e) => set({ grace_minutes: Number(e.target.value) })} />
           </div>
+        </div>
+      )}
+
+      {form.type === 'scale' && (
+        <div>
+          <label htmlFor="question" className="label">Question to answer each day (score out of 10)</label>
+          <input id="question" className="input" maxLength={120} placeholder="How thankful was I today?"
+            value={form.question ?? ''} onChange={(e) => set({ question: e.target.value })} />
+          <p className="muted mt-1">7–10 counts as a strong day (green), 4–6 mixed (amber), 1–3 hard (red).</p>
         </div>
       )}
 

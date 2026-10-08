@@ -4,7 +4,7 @@ export type HabitDraft = Omit<Habit, 'id' | 'user_id' | 'start_date' | 'sort_ord
 
 const everyDay = [0, 1, 2, 3, 4, 5, 6]
 
-const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes'> = {
+const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes' | 'question'> = {
   schedule_days: everyDay,
   target_value: null,
   target_direction: null,
@@ -15,6 +15,7 @@ const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_directio
   tags: [],
   reminder_time: null,
   wind_down_minutes: null,
+  question: null,
 }
 
 export const TEMPLATES: { key: string; description: string; habit: HabitDraft }[] = [
@@ -47,6 +48,11 @@ export const TEMPLATES: { key: string; description: string; habit: HabitDraft }[
     key: 'scripture',
     description: 'Read at least one chapter a day.',
     habit: { ...base, name: 'Scripture Reading', icon: '📖', type: 'amount', unit: 'chapters', target_value: 1, target_direction: 'at_least' },
+  },
+  {
+    key: 'thankfulness',
+    description: 'Be honest: how thankful were you today? Score it out of 10.',
+    habit: { ...base, name: 'Thankfulness', icon: '🌻', type: 'scale', question: 'How thankful was I today?', tags: ['tired', 'stressed', 'comparing', 'complaining', 'busy'] },
   },
 ]
 

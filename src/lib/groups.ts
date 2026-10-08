@@ -45,6 +45,7 @@ export interface SharedHabit {
   start_date: string
   outcome_options: OutcomeLabels
   unit: string | null
+  question?: string | null
   visibility: Exclude<Visibility, 'private'>
 }
 
@@ -58,6 +59,7 @@ export interface SharedCheckin {
   value_time: string | null
   tags: string[]
   note: string | null
+  created_at?: string // when first saved (to spot "caught up the next morning")
   updated_at: string
 }
 

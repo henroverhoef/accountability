@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useData } from '../data/DataProvider'
 import { addDays, habitStreak, honestyStreak, weekStart, weeklySummary, type Outcome } from '../lib/logic'
-import { formatDate, outcomeLabel, OUTCOME_STYLES } from '../lib/outcomes'
+import { averageScore, formatDate, hasMidOutcome, outcomeLabel, OUTCOME_STYLES } from '../lib/outcomes'
 
 /** Personal weekly review. No comparing with anyone: just your own progress. */
 export default function Summary() {
@@ -40,7 +40,8 @@ export default function Summary() {
       {activeHabits.map((h) => {
         const w = s.habits.find((x) => x.habitId === h.id)
         if (!w || w.due === 0) return null
-        const outcomes: Outcome[] = h.type === 'avoid' || h.type === 'done' ? ['good', 'mid', 'bad'] : ['good', 'bad']
+        const outcomes: Outcome[] = hasMidOutcome(h.type) ? ['good', 'mid', 'bad'] : ['good', 'bad']
+        const avg = h.type === 'scale' ? averageScore(checkins.filter((c) => c.habit_id === h.id && c.date >= s.start && c.date <= s.end)) : null
         return (
           <section key={h.id} className="card">
             <div className="mb-2 flex items-center gap-2">
@@ -48,6 +49,7 @@ export default function Summary() {
               <h2 className="h2 flex-1">{h.name}</h2>
               <span className="text-sm font-semibold">🔥 {habitStreak(h, checkins, today).current}</span>
             </div>
+            {avg && <p className="mb-2 text-sm">Average this week: <strong className="text-lg">{avg}</strong> / 10</p>}
             <ul className="space-y-1 text-sm">
               {outcomes.map((o) => (
                 <li key={o} className="flex items-center gap-2">

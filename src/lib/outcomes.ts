@@ -7,6 +7,7 @@ export const DEFAULT_LABELS: Record<HabitType, Partial<Record<Outcome, string>>>
   done: { good: 'Done', mid: 'Partly', bad: 'Skipped' },
   time: { good: 'On time', bad: 'Late' },
   amount: { good: 'Target met', bad: 'Missed target' },
+  scale: { good: 'Strong (7–10)', mid: 'Mixed (4–6)', bad: 'Hard (1–3)' },
 }
 
 export const TYPE_NAMES: Record<HabitType, string> = {
@@ -14,10 +15,40 @@ export const TYPE_NAMES: Record<HabitType, string> = {
   done: 'Done / not done',
   time: 'Time target',
   amount: 'Amount',
+  scale: 'Score out of 10',
 }
 
 export function outcomeLabel(habit: Pick<Habit, 'type' | 'outcome_options'>, outcome: Outcome): string {
   return habit.outcome_options?.[outcome] || DEFAULT_LABELS[habit.type][outcome] || outcome
+}
+
+/** Types whose answers come in three levels (green / amber / red). */
+export function hasMidOutcome(type: HabitType): boolean {
+  return type === 'avoid' || type === 'done' || type === 'scale'
+}
+
+/**
+ * The answer in words, for showing a check-in anywhere:
+ * "Clean", "7/10", "On time · 22:15", "Target met · 2 chapters".
+ * outcome may be null when a habit is shared as "check-in only".
+ */
+export function describeAnswer(
+  habit: Pick<Habit, 'type' | 'outcome_options' | 'unit'>,
+  c: { outcome: Outcome | null; value_number?: number | null; value_time?: string | null },
+): string {
+  if (!c.outcome) return 'Checked in'
+  if (habit.type === 'scale' && c.value_number != null) return `${c.value_number}/10`
+  const label = outcomeLabel(habit, c.outcome)
+  if (habit.type === 'time' && c.value_time) return `${label} · ${c.value_time.slice(0, 5)}`
+  if (habit.type === 'amount' && c.value_number != null) return `${label} · ${c.value_number}${habit.unit ? ` ${habit.unit}` : ''}`
+  return label
+}
+
+/** Average of the scores (for "score out of 10" habits), e.g. "6.4", or null if none. */
+export function averageScore(checkins: { value_number?: number | null }[]): string | null {
+  const scores = checkins.map((c) => c.value_number).filter((v): v is number => typeof v === 'number')
+  if (scores.length === 0) return null
+  return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1).replace(/\.0$/, '')
 }
 
 /** Which outcomes a person picks by tapping (time & amount are calculated instead). */

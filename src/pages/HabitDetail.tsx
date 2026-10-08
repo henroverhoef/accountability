@@ -7,7 +7,7 @@ import { listMyGroups, listMyShares, setShare, type Visibility } from '../lib/gr
 import { useData } from '../data/DataProvider'
 import Heatmap from '../components/Heatmap'
 import { addDays, habitStreak, type Outcome } from '../lib/logic'
-import { formatDate, outcomeLabel, OUTCOME_STYLES, shortTime, TYPE_NAMES, WEEKDAYS } from '../lib/outcomes'
+import { averageScore, describeAnswer, formatDate, hasMidOutcome, outcomeLabel, OUTCOME_STYLES, shortTime, TYPE_NAMES, WEEKDAYS } from '../lib/outcomes'
 
 export default function HabitDetail() {
   const { id } = useParams()
@@ -32,6 +32,7 @@ export default function HabitDetail() {
             {TYPE_NAMES[habit.type]}
             {habit.type === 'time' && ` · by ${shortTime(habit.target_time)}`}
             {habit.type === 'amount' && ` · ${habit.target_direction === 'at_most' ? 'at most' : 'at least'} ${habit.target_value ?? ''} ${habit.unit ?? ''}`}
+            {habit.type === 'scale' && habit.question && ` · “${habit.question}”`}
             {habit.schedule_days.length < 7 && ` · ${habit.schedule_days.map((d) => WEEKDAYS[d]).join(', ')}`}
           </p>
         </div>
@@ -56,8 +57,11 @@ export default function HabitDetail() {
 
       <section className="card">
         <h2 className="h2 mb-2">Last 30 days</h2>
+        {habit.type === 'scale' && averageScore(last30) && (
+          <p className="mb-2">Average score: <strong className="text-xl">{averageScore(last30)}</strong> / 10</p>
+        )}
         <ul className="space-y-1">
-          {counts.filter(({ o }) => o !== 'mid' || habit.type === 'avoid' || habit.type === 'done').map(({ o, n }) => (
+          {counts.filter(({ o }) => o !== 'mid' || hasMidOutcome(habit.type)).map(({ o, n }) => (
             <li key={o} className="flex items-center gap-2">
               <span className={`h-3 w-3 rounded-full ${OUTCOME_STYLES[o].dot}`} />
               <span className="flex-1">{outcomeLabel(habit, o)}</span>
@@ -75,7 +79,7 @@ export default function HabitDetail() {
           <ul className="space-y-3">
             {notes.map((c) => (
               <li key={c.date} className="text-sm">
-                <div className="font-semibold">{formatDate(c.date)} · {outcomeLabel(habit, c.outcome)}</div>
+                <div className="font-semibold">{formatDate(c.date)} · {describeAnswer(habit, c)}</div>
                 {c.tags.length > 0 && <div className="muted">{c.tags.join(', ')}</div>}
                 {c.note && <div className="whitespace-pre-wrap">{c.note}</div>}
               </li>

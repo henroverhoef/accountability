@@ -13,6 +13,7 @@ import HabitEdit from './pages/HabitEdit'
 import Settings from './pages/Settings'
 import Groups from './pages/Groups'
 import GroupDetail from './pages/GroupDetail'
+import MemberDetail from './pages/MemberDetail'
 import Join from './pages/Join'
 import Sos from './pages/Sos'
 import Summary from './pages/Summary'
@@ -64,6 +65,7 @@ function Gate() {
           <Route path="/habits/:id/edit" element={<HabitEdit />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:id" element={<GroupDetail />} />
+          <Route path="/groups/:id/member/:userId" element={<MemberDetail />} />
           <Route path="/join/:code" element={<Join />} />
           <Route path="/sos" element={<Sos />} />
           <Route path="/settings" element={<Settings />} />

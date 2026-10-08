@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { evaluateAmount, evaluateTime, type Outcome } from '../lib/logic'
+import { evaluateAmount, evaluateScale, evaluateTime, type Outcome } from '../lib/logic'
 import { outcomeLabel, OUTCOME_STYLES, shortTime, tappableOutcomes } from '../lib/outcomes'
 import type { Checkin, Habit } from '../lib/types'
 
@@ -17,7 +17,8 @@ export default function CheckinCard({ habit, date, draft, onChange }: Props) {
   const blank: Checkin = { habit_id: habit.id, date, outcome: 'good', value_number: null, value_time: null, tags: [], note: null }
   const update = (changes: Partial<Checkin>) => onChange({ ...blank, ...draft, ...changes })
 
-  const showTags = habit.tags.length > 0 && (open || (habit.type === 'avoid' && draft && draft.outcome !== 'good'))
+  // Tags open by themselves on a harder day, to help spot patterns.
+  const showTags = habit.tags.length > 0 && (open || ((habit.type === 'avoid' || habit.type === 'scale') && draft && draft.outcome !== 'good'))
 
   return (
     <div className="card space-y-3">
@@ -37,6 +38,7 @@ export default function CheckinCard({ habit, date, draft, onChange }: Props) {
 
       {habit.type === 'time' && <TimeInput habit={habit} draft={draft} update={update} />}
       {habit.type === 'amount' && <AmountInput habit={habit} draft={draft} update={update} />}
+      {habit.type === 'scale' && <ScaleInput habit={habit} draft={draft} update={update} />}
 
       {showTags && (
         <div className="flex flex-wrap gap-2" aria-label="Tags">
@@ -111,6 +113,36 @@ function AmountInput({ habit, draft, update }: { habit: Habit; draft?: Checkin; 
       <button type="button" className={draft ? 'btn-secondary' : 'btn-primary'} onClick={() => log(value)}>
         {draft ? outcomeLabel(habit, draft.outcome) : 'Log'}
       </button>
+    </div>
+  )
+}
+
+/** Score out of 10: drag the slider (or use the arrow keys); any touch counts as an answer. */
+function ScaleInput({ habit, draft, update }: { habit: Habit; draft?: Checkin; update: (c: Partial<Checkin>) => void }) {
+  const [value, setValue] = useState<number>(draft?.value_number ?? 5)
+  const answered = draft?.value_number != null
+  const log = (v: number) => update({ value_number: v, outcome: evaluateScale(v) })
+  const color = answered ? OUTCOME_STYLES[evaluateScale(value)].dot : 'bg-slate-300 dark:bg-slate-600'
+  return (
+    <div className="space-y-2">
+      {habit.question && <p className="font-medium">{habit.question}</p>}
+      <div className="flex items-center gap-3">
+        <span className={`flex h-14 w-16 shrink-0 items-center justify-center rounded-xl text-2xl font-bold ${answered ? 'text-white' : ''} ${color}`} aria-hidden>
+          {answered ? value : '?'}
+        </span>
+        <div className="flex-1">
+          <label htmlFor={`scale-${habit.id}`} className="sr-only">{habit.question || habit.name} (1 to 10)</label>
+          <input id={`scale-${habit.id}`} type="range" min={1} max={10} step={1} value={value}
+            className="h-10 w-full cursor-pointer accent-amber-500"
+            aria-valuetext={`${value} out of 10`}
+            onChange={(e) => { const v = Number(e.target.value); setValue(v); log(v) }}
+            onPointerUp={() => log(value)} onKeyUp={() => log(value)} />
+          <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400" aria-hidden>
+            <span>1 · hard</span><span>10 · strong</span>
+          </div>
+        </div>
+      </div>
+      {!answered && <p className="muted">Slide to give today a score.</p>}
     </div>
   )
 }
