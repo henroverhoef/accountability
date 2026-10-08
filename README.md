@@ -99,6 +99,7 @@ choose **I already use Steadfast** and type it in.
 - **Missed last night?** Home shows "Last night's check-in is still open" until midnight,
   and a morning reminder (07:30 by default) points to it. Catch-up check-ins appear in the
   group feed marked "caught up next morning". Anything older can't be filled in.
+- **Bedtime-type habits** start at the current time on today's check-in, so you just tap **Log** as you go to bed (catching up on last night starts at the target time instead).
 - **Score out of 10** habits (e.g. Thankfulness: "How thankful was I today?"): answer with
   a slider. 7–10 counts as a strong day (green), 4–6 mixed (amber), 1–3 hard (red);
   habit pages and the weekly review show the average.

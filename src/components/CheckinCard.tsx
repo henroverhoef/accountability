@@ -6,12 +6,14 @@ import type { Checkin, Habit } from '../lib/types'
 interface Props {
   habit: Habit
   date: string
+  /** Checking in for today (not catching up on last night). */
+  isToday: boolean
   draft: Checkin | undefined
   onChange: (c: Checkin) => void
 }
 
 /** One habit on the check-in screen: answer with one or two taps, details optional. */
-export default function CheckinCard({ habit, date, draft, onChange }: Props) {
+export default function CheckinCard({ habit, date, isToday, draft, onChange }: Props) {
   const [open, setOpen] = useState(Boolean(draft?.note || draft?.tags.length))
 
   const blank: Checkin = { habit_id: habit.id, date, outcome: 'good', value_number: null, value_time: null, tags: [], note: null }
@@ -36,7 +38,7 @@ export default function CheckinCard({ habit, date, draft, onChange }: Props) {
         </div>
       )}
 
-      {habit.type === 'time' && <TimeInput habit={habit} draft={draft} update={update} />}
+      {habit.type === 'time' && <TimeInput habit={habit} isToday={isToday} draft={draft} update={update} />}
       {habit.type === 'amount' && <AmountInput habit={habit} draft={draft} update={update} />}
       {habit.type === 'scale' && <ScaleInput habit={habit} draft={draft} update={update} />}
 
@@ -81,19 +83,36 @@ function OutcomeButton({ outcome, label, selected, onClick }: { outcome: Outcome
   )
 }
 
-function TimeInput({ habit, draft, update }: { habit: Habit; draft?: Checkin; update: (c: Partial<Checkin>) => void }) {
+/**
+ * Time habits (e.g. bedtime): you log just before getting into bed, so the field starts at
+ * the current time and one tap on "Log" is enough. Catching up on last night starts at the
+ * target instead (the time now says nothing), unless it's still the small hours.
+ */
+function TimeInput({ habit, isToday, draft, update }: { habit: Habit; isToday: boolean; draft?: Checkin; update: (c: Partial<Checkin>) => void }) {
   const target = shortTime(habit.target_time) || '22:30'
-  const [value, setValue] = useState(shortTime(draft?.value_time) || target)
+  const now = new Date()
+  const useNow = isToday || now.getHours() < 5
+  const nowTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const [value, setValue] = useState(shortTime(draft?.value_time) || (useNow ? nowTime : target))
   const log = (v: string) => update({ value_time: v, outcome: evaluateTime(v, target, habit.grace_minutes) })
   return (
-    <div className="flex items-center gap-2">
-      <label className="sr-only" htmlFor={`time-${habit.id}`}>Actual time</label>
-      <input id={`time-${habit.id}`} type="time" className="input flex-1 text-lg" value={value}
-        onChange={(e) => { setValue(e.target.value); if (draft && e.target.value) log(e.target.value) }} />
-      <button type="button" className={draft ? 'btn-secondary' : 'btn-primary'} onClick={() => value && log(value)}>
-        {draft ? outcomeLabel(habit, draft.outcome) : 'Log'}
-      </button>
-      <span className="sr-only">Target {target}</span>
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <label className="sr-only" htmlFor={`time-${habit.id}`}>Actual time</label>
+        <input id={`time-${habit.id}`} type="time" className="input flex-1 text-lg" value={value}
+          onChange={(e) => { setValue(e.target.value); if (draft && e.target.value) log(e.target.value) }} />
+        <button type="button" className={draft ? 'btn-secondary' : 'btn-primary'} onClick={() => value && log(value)}>
+          {draft ? outcomeLabel(habit, draft.outcome) : 'Log'}
+        </button>
+      </div>
+      <p className="muted text-sm">
+        Target {target}.{' '}
+        {!draft && useNow && value === nowTime && 'Set to now. Tap Log as you go to bed, or change the time.'}
+        {isToday && now.getHours() < 5 && 'Going to bed after midnight? Log it under “Last night”. '}
+        {draft && value !== nowTime && useNow && (
+          <button type="button" className="font-medium underline underline-offset-2" onClick={() => { setValue(nowTime); log(nowTime) }}>Use now ({nowTime})</button>
+        )}
+      </p>
     </div>
   )
 }

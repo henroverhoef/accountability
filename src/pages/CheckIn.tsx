@@ -124,6 +124,7 @@ export default function CheckIn() {
                 key={date}
                 habit={h}
                 date={date}
+                isToday={date === today}
                 draft={drafts[h.id]}
                 onChange={(c) => setDrafts((prev) => ({ ...prev, [h.id]: c }))}
               />
