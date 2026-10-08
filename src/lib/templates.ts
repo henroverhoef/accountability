@@ -22,7 +22,7 @@ export const TEMPLATES: { key: string; description: string; habit: HabitDraft }[
   {
     key: 'purity',
     description: 'Guard your eyes and heart. You can rename it to anything.',
-    habit: { ...base, name: 'Purity', icon: '🛡️', type: 'avoid', tags: ['late night', 'alone', 'stressed', 'bored', 'scrolling', 'tired'] },
+    habit: { ...base, name: 'Purity', icon: '🛡️', type: 'avoid', tags: ['late night', 'alone', 'stressed', 'bored', 'scrolling', 'tired', 'wrestling', 'eyes roaming', 'thoughts roaming'] },
   },
   {
     key: 'shorts',
