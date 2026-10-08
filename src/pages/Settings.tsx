@@ -10,6 +10,9 @@ import { clearPin, hasPin, setPin } from '../lib/pin'
 import { disablePush } from '../lib/push'
 import { shortTime } from '../lib/outcomes'
 import type { Profile } from '../lib/types'
+import { Link } from 'react-router-dom'
+import { useAsync } from '../components/useAsync'
+import { isAppAdmin } from '../lib/admin'
 
 export default function Settings() {
   const { profile, saveProfile, signOut } = useData()
@@ -17,6 +20,7 @@ export default function Settings() {
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const admin = useAsync(isAppAdmin, [])
 
   if (!profile) return null
 
@@ -130,6 +134,10 @@ export default function Settings() {
         }}>Sign out</button>
         <DeleteAccount onDeleted={signOut} />
       </section>
+
+      {admin.data && (
+        <p className="text-center"><Link to="/admin" className="muted text-xs underline-offset-2 hover:underline">🛠 App overview</Link></p>
+      )}
     </div>
   )
 }

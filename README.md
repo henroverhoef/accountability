@@ -108,6 +108,10 @@ choose **I already use Steadfast** and type it in.
   they share with that group).
 - **Quick tip**: shown once after setup, explaining how to install the app and turn on
   notifications (Settings → Help shows it again).
+- **App overview** (app owner only): a small "🛠 App overview" link at the bottom of Settings shows
+  every group with its members, everyone's join date and last check-in, and totals. It never shows
+  habits, answers or notes. Only accounts in the `app_admins` table see it (add one in the SQL editor:
+  `insert into app_admins (user_id) values ('<user id>');`).
 - **Weekly review** (Home → Week in review): days fully checked in, outcomes per habit,
   streaks, and the tags that came up most on harder days. Personal only; there are no
   leaderboards. A notification "Your week in review is ready" comes on Sunday at 19:00

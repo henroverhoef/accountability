@@ -17,6 +17,7 @@ import MemberDetail from './pages/MemberDetail'
 import Join from './pages/Join'
 import Sos from './pages/Sos'
 import Summary from './pages/Summary'
+import Admin from './pages/Admin'
 import PinLock from './components/PinLock'
 
 export default function App() {
@@ -70,6 +71,7 @@ function Gate() {
           <Route path="/sos" element={<Sos />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/summary" element={<Summary />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
