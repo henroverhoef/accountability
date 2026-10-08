@@ -84,7 +84,7 @@ function OutcomeButton({ outcome, label, selected, onClick }: { outcome: Outcome
 }
 
 /**
- * Time habits (e.g. bedtime): you log just before getting into bed, so the field starts at
+ * Time habits (e.g. bedtime): you usually log right when it happens, so the field starts at
  * the current time and one tap on "Log" is enough. Catching up on last night starts at the
  * target instead (the time now says nothing), unless it's still the small hours.
  */
@@ -107,8 +107,8 @@ function TimeInput({ habit, isToday, draft, update }: { habit: Habit; isToday: b
       </div>
       <p className="muted text-sm">
         Target {target}.{' '}
-        {!draft && useNow && value === nowTime && 'Set to now. Tap Log as you go to bed, or change the time.'}
-        {isToday && now.getHours() < 5 && 'Going to bed after midnight? Log it under “Last night”. '}
+        {!draft && useNow && value === nowTime && 'Set to the time now. Tap Log, or change it.'}
+        {isToday && now.getHours() < 5 && 'After midnight? Something for last night goes under “Last night”. '}
         {draft && value !== nowTime && useNow && (
           <button type="button" className="font-medium underline underline-offset-2" onClick={() => { setValue(nowTime); log(nowTime) }}>Use now ({nowTime})</button>
         )}
