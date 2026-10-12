@@ -7,6 +7,16 @@ import { useAsync } from '../components/useAsync'
 import { listMyGroups, recentEncouragements } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
 
+function timeAgo(iso: string): string {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h ago`
+  const days = Math.round(hours / 24)
+  return days === 1 ? 'yesterday' : `${days} days ago`
+}
+
 const ENCOURAGEMENT_TEXT = {
   sos: { icon: '🆘', text: 'asked for prayer' },
   prayer: { icon: '🙏', text: 'is praying for you' },
@@ -80,7 +90,7 @@ export default function Home() {
 
       {encouragement.data && encouragement.data.length > 0 && (
         <section className="card">
-          <h2 className="h2 mb-2">Encouragement</h2>
+          <h2 className="h2 mb-2">From your groups</h2>
           <ul className="space-y-2">
             {encouragement.data.map((e) => (
               <li key={e.id}>
@@ -88,6 +98,7 @@ export default function Home() {
                   <span aria-hidden>{ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
                   <strong>{e.from_name}</strong>{' '}
                   {e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
+                  <span className="muted"> · {timeAgo(e.created_at)}</span>
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}
                 </Link>
               </li>
