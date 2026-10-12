@@ -1,10 +1,18 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
-import { dayProgress, habitStreak, honestyStreak } from '../lib/logic'
+import { dayProgress, habitStreak, honestyStreak, supportReason, weekKey } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
-import { recentEncouragements } from '../lib/groups'
+import { listMyGroups, recentEncouragements } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
+
+const ENCOURAGEMENT_TEXT = {
+  sos: { icon: '🆘', text: 'asked for prayer' },
+  prayer: { icon: '🙏', text: 'is praying for you' },
+  kudos: { icon: '👏', text: 'gave you kudos' },
+  message: { icon: '✉️', text: '' },
+} as const
 
 export default function Home() {
   const { profile, activeHabits, checkins, today, yesterday } = useData()
@@ -12,6 +20,8 @@ export default function Home() {
   const yesterdayProgress = dayProgress(activeHabits, checkins, yesterday)
   const honesty = honestyStreak(activeHabits, checkins, today)
   const encouragement = useAsync(() => recentEncouragements(3), [])
+  // After a hard stretch (hidden rule, see logic/support.ts): encourage reaching out.
+  const hardStretch = supportReason(activeHabits, checkins, today) === 'hard'
 
   return (
     <div className="page space-y-4">
@@ -47,6 +57,8 @@ export default function Home() {
         </Link>
       </section>
 
+      {hardStretch && <ReachOut week={weekKey(today)} />}
+
       <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-3 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
         🆘 I need help
       </Link>
@@ -72,10 +84,10 @@ export default function Home() {
           <ul className="space-y-2">
             {encouragement.data.map((e) => (
               <li key={e.id}>
-                <Link to={`/groups/${e.group_id}`} className="block text-sm">
-                  <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.kind === 'prayer' ? '🙏' : '✉️'}</span>{' '}
+                <Link to={`/groups/${e.group_id}?tab=feed`} className="block text-sm">
+                  <span aria-hidden>{ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
                   <strong>{e.from_name}</strong>{' '}
-                  {e.kind === 'sos' ? 'asked for prayer' : e.kind === 'prayer' ? 'is praying for you' : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
+                  {e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}
                 </Link>
               </li>
@@ -109,5 +121,30 @@ export default function Home() {
 
       <Link to="/summary" className="btn-secondary w-full">📊 Week in review</Link>
     </div>
+  )
+}
+
+/**
+ * Shown to you (only you) after a hard stretch, to encourage an honest conversation.
+ * "Not now" hides it for the rest of the week.
+ */
+function ReachOut({ week }: { week: string }) {
+  const key = `steadfast:reachout-dismissed:${week}`
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(key) === '1' } catch { return false } })
+  const groups = useAsync(listMyGroups, [])
+  if (hidden) return null
+  const only = groups.data?.length === 1 ? groups.data[0] : null
+  return (
+    <section className="card space-y-3 border-l-4 border-amber-400">
+      <p className="text-lg font-semibold">💛 You don’t have to carry this alone</p>
+      <p>
+        It looks like the last while has been harder. That’s exactly what your brothers are there for.
+        Who could you reach out to this week for an honest, unhurried conversation, over coffee or on a call?
+      </p>
+      <Link to={only ? `/groups/${only.id}?tab=feed` : '/groups'} className="btn-primary w-full">✉️ Reach out to my group</Link>
+      <button className="btn-ghost w-full" onClick={() => { try { localStorage.setItem(key, '1') } catch { /* ignore */ } setHidden(true) }}>
+        Not now
+      </button>
+    </section>
   )
 }

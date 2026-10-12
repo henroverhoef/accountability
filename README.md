@@ -85,7 +85,8 @@ choose **I already use Steadfast** and type it in.
 3. **Group** (with a friend): send him the invite link; he joins with his name. Each of
    you: Group → **Sharing** → set one habit to *Result + notes*, one to *Check-in only*,
    leave one *Private*, then check in. Each phone should see exactly that and no more.
-   Tap **🙏 Praying for you** → he gets a notification. Home → **🆘 I need help** → he's
+   Next to his answers, tap **👏** (kudos, when it went well) or **🙏** (praying, when it was
+   hard) → he gets a notification that opens the group's **Feed**. Home → **🆘 I need help** → he's
    notified and you see the calming screen.
 4. **Login code:** Settings → create a login code. On another phone or browser choose
    *I already use Steadfast* and enter it: your habits and history appear.
@@ -129,6 +130,17 @@ choose **I already use Steadfast** and type it in.
   their own timezone and sends what's due, once, and only if they haven't checked in
   yet: evening reminder (default 21:30), a nudge an hour later, a morning nudge about
   yesterday, per-habit reminders and a wind-down reminder before a bedtime target.
+- **Group feed**: messages to the group (updates, prayer requests, encouragement), prayers,
+  kudos and SOS. It says what a prayer or kudos is about ("about 🛡️ Purity (Wed)") or "in
+  general". Individual check-ins aren't in the feed; tap a member to see them. Tapping a
+  notification about a message, prayer or kudos opens the feed.
+- **Kudos and praying**: on a member's card and page, each shared answer gets 👏 when it went
+  well and 🙏 when it was hard. "🙏 Praying for you" under a member is a prayer in general.
+- **Support prompts**: when someone has had a hard stretch for a while, the app quietly
+  suggests that the group reaches out (a coffee, praying together, an honest conversation),
+  and encourages the person to reach out too, with at most one notification a week (at noon).
+  No score is ever shown. The group's prompt only uses what that person shares with the
+  group. The rule is in `supabase/functions/_shared/logic/support.ts`.
 - **Groups**: the creator is admin (rename, new invite code, remove members). Sharing
   is per habit, per group: Private · Check-in only · Result · Result + notes (default:
   joining a group or adding a habit shares it as Result + notes; change it any time).

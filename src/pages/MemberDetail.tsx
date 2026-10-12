@@ -6,7 +6,7 @@ import { useAsync } from '../components/useAsync'
 import { getOverview, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
 import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
 import { averageScore, formatDate } from '../lib/outcomes'
-import { AnswerBadge, caughtUpLater, daysSinceCheckin, EncourageButtons } from './GroupDetail'
+import { AnswerBadge, caughtUpLater, CheckinReaction, daysSinceCheckin, EncourageButtons, memberSupportReason, SupportPrompt } from './GroupDetail'
 
 /**
  * One group member's check-ins: everything they share with this group, per habit.
@@ -29,6 +29,7 @@ export default function MemberDetail() {
   const name = m.display_name || 'Someone'
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
   const quietDays = daysSinceCheckin(m)
+  const support = isMe ? null : memberSupportReason(o, m)
 
   return (
     <div className="page space-y-4">
@@ -40,7 +41,8 @@ export default function MemberDetail() {
           {m.checked_in_today === true ? '✅ Checked in today' : m.checked_in_today === false ? '⏳ Not checked in yet today' : 'Nothing due today'}
           {m.last_checkin_date && m.checked_in_today !== true && ` · last check-in ${formatDate(m.last_checkin_date)}`}
         </p>
-        {!isMe && quietDays >= 3 && (
+        {support && <SupportPrompt name={name} reason={support} />}
+        {!isMe && !support && quietDays >= 3 && (
           <p className="rounded-lg bg-amber-100 p-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
             No check-in for {quietDays} days. A short message or a prayer can mean a lot.
           </p>
@@ -61,15 +63,17 @@ export default function MemberDetail() {
       ) : (
         habits.map((h) => (
           <HabitCard key={h.id} habit={h} checkins={o.checkins.filter((c) => c.habit_id === h.id)} today={m.today}
-            canPray={!isMe} groupId={id} onChange={overview.reload} />
+            reactAs={isMe ? null : name} groupId={id} onChange={overview.reload} />
         ))
       )}
     </div>
   )
 }
 
-function HabitCard({ habit, checkins, today, canPray, groupId, onChange }: {
-  habit: SharedHabit; checkins: SharedCheckin[]; today: string; canPray: boolean; groupId: string; onChange: () => void
+function HabitCard({ habit, checkins, today, reactAs, groupId, onChange }: {
+  habit: SharedHabit; checkins: SharedCheckin[]; today: string
+  reactAs: string | null // the member's name; null on your own page (no kudos for yourself)
+  groupId: string; onChange: () => void
 }) {
   const showsResult = habit.visibility !== 'checkin'
   const streak = showsResult
@@ -110,12 +114,10 @@ function HabitCard({ habit, checkins, today, canPray, groupId, onChange }: {
                     {caughtUpLater(c) && <span className="muted font-normal"> · caught up next morning</span>}
                   </span>
                   <AnswerBadge habit={habit} checkin={c} />
+                  {reactAs && <CheckinReaction groupId={groupId} checkin={c} habit={habit} name={reactAs} onSent={onChange} />}
                 </div>
                 {c.tags.length > 0 && <div className="flex flex-wrap gap-1">{c.tags.map((t) => <span key={t} className="rounded-full bg-slate-200 px-2 py-0.5 text-xs dark:bg-slate-700">{t}</span>)}</div>}
                 {c.note && <p className="whitespace-pre-wrap rounded-lg bg-slate-100 p-2 dark:bg-slate-800">{c.note}</p>}
-                {canPray && c.outcome && c.outcome !== 'good' && (
-                  <EncourageButtons groupId={groupId} toUser={c.user_id} checkinId={c.id} onSent={onChange} />
-                )}
               </li>
             ))}
           </ul>

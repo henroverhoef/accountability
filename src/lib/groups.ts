@@ -76,7 +76,7 @@ export interface Encouragement {
   from_user: string
   to_user: string | null
   checkin_id: string | null
-  kind: 'prayer' | 'message' | 'sos'
+  kind: 'prayer' | 'message' | 'sos' | 'kudos'
   message: string | null
   created_at: string
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import ShareSelect from '../components/ShareSelect'
@@ -8,10 +8,11 @@ import {
   getOverview, inviteLink, listEncouragements, listMyShares, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
-import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
+import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
 import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
 
 type Tab = 'members' | 'feed' | 'sharing' | 'invite'
+const TABS: Tab[] = ['members', 'feed', 'sharing', 'invite']
 
 export default function GroupDetail() {
   const { id = '' } = useParams()
@@ -19,7 +20,17 @@ export default function GroupDetail() {
   const me = session!.user.id
   const overview = useAsync(() => getOverview(id), [id])
   const feed = useAsync(() => listEncouragements(id), [id])
-  const [tab, setTab] = useState<Tab>('members')
+  // The tab lives in the address (#/groups/…?tab=feed), so notifications can open the feed.
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'members'
+  const setTab = (t: Tab) => setParams(t === 'members' ? {} : { tab: t }, { replace: true })
+
+  // Coming back to the app (e.g. from a notification): show what's new.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload() } }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [overview.reload, feed.reload])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /><Link to="/groups" className="btn-secondary mt-4">Back</Link></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
@@ -33,7 +44,7 @@ export default function GroupDetail() {
       <GroupHeader o={o} onRenamed={overview.reload} />
 
       <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-800" role="tablist">
-        {(['members', 'feed', 'sharing', 'invite'] as Tab[]).map((t) => (
+        {TABS.map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
             className={`min-h-11 rounded-lg text-sm font-semibold capitalize ${tab === t ? 'bg-white shadow dark:bg-slate-950' : 'text-slate-600 dark:text-slate-400'}`}>
             {t}
@@ -79,10 +90,43 @@ export function daysSinceCheckin(m: GroupMember): number {
   return Math.max(0, daysBetween(since, m.today))
 }
 
+/**
+ * Could this member use some support, going only by what they share with this group?
+ * (The same hidden rule the server uses for its prompts; nobody ever sees a score.)
+ */
+export function memberSupportReason(o: GroupOverview, m: GroupMember) {
+  const habits = o.habits.filter((h) => h.user_id === m.user_id).map((h) => ({ ...h, archived: false }))
+  return supportReason(habits, o.checkins.filter((c) => c.user_id === m.user_id), m.today)
+}
+
+/** A gentle nudge to the group: after a hard stretch, or when someone has gone quiet. */
+export function SupportPrompt({ name, reason }: { name: string; reason: 'hard' | 'quiet' }) {
+  if (reason === 'quiet') {
+    return (
+      <p className="rounded-lg bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-900/40 dark:text-amber-50">
+        💛 {name} hasn’t checked in much lately. A message, a call or a coffee could make a difference.
+      </p>
+    )
+  }
+  return (
+    <div className="space-y-1 rounded-lg bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-900/40 dark:text-amber-50">
+      <p className="font-semibold">💛 {name} may be going through a harder stretch.</p>
+      <p>This could be a good week to:</p>
+      <ul className="ml-1 space-y-0.5">
+        <li>☕ invite {name} for coffee</li>
+        <li>🙏 pray together, not just for {name}</li>
+        <li>💬 talk honestly about what might need to change</li>
+      </ul>
+    </div>
+  )
+}
+
 function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: GroupMember; me: string; onChange: () => void }) {
   const isMe = m.user_id === me
+  const name = m.display_name || 'Someone'
   const quietDays = daysSinceCheckin(m)
-  const needsLove = !isMe && quietDays >= 3
+  const support = isMe ? null : memberSupportReason(o, m)
+  const needsLove = !isMe && (support !== null || quietDays >= 3)
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
 
   return (
@@ -98,7 +142,7 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
         </span>
       </div>
 
-      {needsLove && (
+      {support ? <SupportPrompt name={name} reason={support} /> : needsLove && (
         <p className="rounded-lg bg-amber-100 p-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
           No check-in for {quietDays} days. Maybe reach out?
         </p>
@@ -106,7 +150,10 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
 
       {habits.length > 0 && (
         <ul className="space-y-1">
-          {habits.map((h) => <SharedHabitRow key={h.id} habit={h} checkins={o.checkins} today={m.today} />)}
+          {habits.map((h) => (
+            <SharedHabitRow key={h.id} habit={h} checkins={o.checkins} today={m.today}
+              react={isMe ? undefined : { groupId: o.group.id, name, onSent: onChange }} />
+          ))}
         </ul>
       )}
 
@@ -119,20 +166,68 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
   )
 }
 
-export function SharedHabitRow({ habit, checkins, today }: { habit: SharedHabit; checkins: SharedCheckin[]; today: string }) {
+/**
+ * One shared habit on a member card: today's answer, or last night's until today's is in
+ * (people often check in late, and friends look the next morning), plus kudos / praying.
+ */
+export function SharedHabitRow({ habit, checkins, today, react }: {
+  habit: SharedHabit; checkins: SharedCheckin[]; today: string
+  react?: { groupId: string; name: string; onSent: () => void } // not on your own card
+}) {
   const mine = checkins.filter((c) => c.habit_id === habit.id)
-  const todays = mine.find((c) => c.date === today)
+  const latest = mine.find((c) => c.date === today) ?? mine.find((c) => c.date === addDays(today, -1))
   const showResult = habit.visibility !== 'checkin'
   const streak = showResult
     ? habitStreak({ ...habit, archived: false }, mine.filter((c) => c.outcome).map((c) => c as CheckinLike), today).current
     : null
   return (
-    <li className="flex items-center gap-2 text-sm">
+    <li className="flex min-h-10 items-center gap-2 text-sm">
       <span aria-hidden>{habit.icon}</span>
       <span className="flex-1">{habit.name}</span>
-      {todays ? <AnswerBadge habit={habit} checkin={todays} /> : <span className="muted">not yet</span>}
+      {latest ? (
+        <span className="text-right">
+          <AnswerBadge habit={habit} checkin={latest} />
+          {latest.date !== today && <span className="muted block text-xs">last night</span>}
+        </span>
+      ) : <span className="muted">not yet</span>}
       {streak !== null && <span className="w-12 text-right font-semibold">🔥{streak}</span>}
+      {react && (
+        <span className="w-10 text-right">
+          {latest && <CheckinReaction groupId={react.groupId} checkin={latest} habit={habit} name={react.name} onSent={react.onSent} />}
+        </span>
+      )}
     </li>
+  )
+}
+
+/**
+ * React to one check-in: 👏 kudos when it went well, 🙏 praying when it was hard.
+ * Nothing when the result isn't shared (check-in only).
+ */
+export function CheckinReaction({ groupId, checkin, habit, name, onSent }: {
+  groupId: string; checkin: SharedCheckin; habit: SharedHabit; name: string; onSent: () => void
+}) {
+  const [sent, setSent] = useState(false)
+  if (!checkin.outcome) return null
+  const kind = checkin.outcome === 'good' ? 'kudos' : 'prayer'
+  const icon = kind === 'kudos' ? '👏' : '🙏'
+  const label = kind === 'kudos' ? `Give ${name} kudos for ${habit.name}` : `Pray for ${name} about ${habit.name}`
+
+  async function send() {
+    try {
+      await sendEncouragement({ group_id: groupId, kind, to_user: checkin.user_id, checkin_id: checkin.id })
+      setSent(true)
+      onSent()
+    } catch (e) {
+      alert(errorMessage(e))
+    }
+  }
+
+  return (
+    <button className={`h-10 w-10 shrink-0 rounded-full text-lg ${sent ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-slate-100 dark:bg-slate-800'}`}
+      aria-label={sent ? `${label}: sent` : label} title={label} disabled={sent} onClick={send}>
+      {sent ? '✓' : icon}
+    </button>
   )
 }
 
@@ -153,7 +248,8 @@ export function caughtUpLater(c: SharedCheckin): boolean {
   return new Date(c.created_at).toLocaleDateString('en-CA') > c.date
 }
 
-export function EncourageButtons({ groupId, toUser, checkinId, onSent }: { groupId: string; toUser: string; checkinId?: string; onSent: () => void }) {
+/** On a member: pray for them in general, or send them a message. */
+export function EncourageButtons({ groupId, toUser, onSent }: { groupId: string; toUser: string; onSent: () => void }) {
   const [writing, setWriting] = useState(false)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -162,7 +258,7 @@ export function EncourageButtons({ groupId, toUser, checkinId, onSent }: { group
   async function send(kind: 'prayer' | 'message') {
     setError(null)
     try {
-      await sendEncouragement({ group_id: groupId, kind, to_user: toUser, checkin_id: checkinId ?? null, message: kind === 'message' ? text : null })
+      await sendEncouragement({ group_id: groupId, kind, to_user: toUser, message: kind === 'message' ? text : null })
       setStatus(kind === 'prayer' ? '🙏 They’ll know you’re praying.' : 'Sent ✓')
       setText('')
       setWriting(false)
@@ -176,12 +272,12 @@ export function EncourageButtons({ groupId, toUser, checkinId, onSent }: { group
     <div className="space-y-2">
       <div className="flex gap-2">
         <button className="btn-secondary flex-1" onClick={() => send('prayer')}>🙏 Praying for you</button>
-        {!checkinId && <button className="btn-secondary flex-1" onClick={() => setWriting(!writing)} aria-expanded={writing}>✉️ Encourage</button>}
+        <button className="btn-secondary flex-1" onClick={() => setWriting(!writing)} aria-expanded={writing}>✉️ Message</button>
       </div>
       {writing && (
         <div className="space-y-2">
           <label className="sr-only" htmlFor={`msg-${toUser}`}>Message</label>
-          <textarea id={`msg-${toUser}`} className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="A short word of encouragement" />
+          <textarea id={`msg-${toUser}`} className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="Only you two see this" />
           <div className="flex items-center justify-between">
             <span className="muted">{280 - text.length}</span>
             <button className="btn-primary" disabled={!text.trim()} onClick={() => send('message')}>Send</button>
@@ -195,20 +291,23 @@ export function EncourageButtons({ groupId, toUser, checkinId, onSent }: { group
 }
 
 // ---------- feed --------------------------------------------------------------
-
-type FeedItem = { at: string; enc?: Encouragement; checkin?: SharedCheckin }
+// Messages, prayers, kudos and SOS. Individual check-ins aren't listed here (they'd
+// bury the messages); they're on each member's page.
 
 function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encouragement[]; me: string; onChange: () => void }) {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const nameOf = (uid: string | null) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
-  const habitOf = (id: string) => o.habits.find((h) => h.id === id)
+  const toName = (uid: string | null) => (uid === me ? 'you' : nameOf(uid))
 
-  const recentCheckins = o.checkins.filter((c) => daysBetween(c.date, o.members.find((m) => m.user_id === c.user_id)?.today ?? c.date) <= 14)
-  const feed: FeedItem[] = [
-    ...items.map((e) => ({ at: e.created_at, enc: e })),
-    ...recentCheckins.map((c) => ({ at: c.updated_at, checkin: c })),
-  ].sort((a, b) => b.at.localeCompare(a.at))
+  /** "about 🛡️ Purity (Wed 8 Oct)" when it's about a check-in the group can see, else "in general". */
+  function about(e: Encouragement, word: 'about' | 'for'): string {
+    if (!e.checkin_id) return 'in general'
+    const c = o.checkins.find((x) => x.id === e.checkin_id)
+    const h = c && o.habits.find((x) => x.id === c.habit_id)
+    if (!c || !h) return `${word} a check-in`
+    return `${word} ${h.icon} ${h.name} (${formatDate(c.date)})`
+  }
 
   async function post() {
     setError(null)
@@ -224,8 +323,9 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
   return (
     <div className="space-y-3">
       <div className="card space-y-2">
-        <label htmlFor="post" className="label">Encourage the whole group</label>
-        <textarea id="post" className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="A verse, a prayer, a word of hope…" />
+        <label htmlFor="post" className="label">Message the group</label>
+        <textarea id="post" className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)}
+          placeholder="An update, a prayer request, a verse, a word of hope…" />
         <div className="flex items-center justify-between">
           <span className="muted">{280 - text.length}</span>
           <button className="btn-primary" disabled={!text.trim()} onClick={post}>Post</button>
@@ -233,41 +333,20 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
         <ErrorText error={error} />
       </div>
 
-      {feed.length === 0 && <p className="muted text-center">Nothing here yet.</p>}
+      {items.length === 0 && <p className="muted text-center">Nothing here yet.</p>}
       <ul className="space-y-2">
-        {feed.map((item) => {
-          if (item.enc) {
-            const e = item.enc
-            const icon = e.kind === 'sos' ? '🆘' : e.kind === 'prayer' ? '🙏' : '✉️'
-            const what =
-              e.kind === 'sos' ? 'asked for prayer and support'
-              : e.kind === 'prayer' ? `is praying for ${e.to_user === me ? 'you' : nameOf(e.to_user)}`
-              : e.to_user ? `→ ${nameOf(e.to_user)}` : ''
-            return (
-              <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
-                <div><span aria-hidden>{icon}</span> <strong>{nameOf(e.from_user)}</strong> {what}</div>
-                {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
-                <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
-              </li>
-            )
-          }
-          const c = item.checkin!
-          const h = habitOf(c.habit_id)
-          if (!h) return null
+        {items.map((e) => {
+          const icon = { sos: '🆘', prayer: '🙏', kudos: '👏', message: '✉️' }[e.kind]
+          const what =
+            e.kind === 'sos' ? 'asked for prayer and support'
+            : e.kind === 'prayer' ? `${e.from_user === me ? 'are' : 'is'} praying for ${toName(e.to_user)} ${about(e, 'about')}`
+            : e.kind === 'kudos' ? `gave ${toName(e.to_user)} kudos ${about(e, 'for')}`
+            : e.to_user ? `→ ${toName(e.to_user)}` : ''
           return (
-            <li key={c.id} className="card space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span aria-hidden>{h.icon}</span>
-                <span className="flex-1">
-                  <Link to={`/groups/${o.group.id}/member/${c.user_id}`} className="font-semibold underline-offset-2 hover:underline">{nameOf(c.user_id)}</Link>
-                  {' '}· {h.name} · {formatDate(c.date)}
-                  {caughtUpLater(c) && <span className="muted"> · caught up next morning</span>}
-                </span>
-                <AnswerBadge habit={h} checkin={c} />
-              </div>
-              {c.tags.length > 0 && <div className="muted">{c.tags.join(', ')}</div>}
-              {c.note && <p className="whitespace-pre-wrap">{c.note}</p>}
-              {c.user_id !== me && <EncourageButtons groupId={o.group.id} toUser={c.user_id} checkinId={c.id} onSent={onChange} />}
+            <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
+              <div><span aria-hidden>{icon}</span> <strong>{nameOf(e.from_user)}</strong> {what}</div>
+              {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
+              <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
             </li>
           )
         })}

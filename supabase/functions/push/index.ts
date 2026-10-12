@@ -1,8 +1,9 @@
 // Edge Function "push": sends all of Steadfast's notifications.
 //
 //   {"type":"tick"}   – every 5 minutes from pg_cron: reminders, nudges, wind-down …
+//                     and, once a day at noon, gentle support prompts (see logic/support.ts)
 //   {"type":"encouragement","id":…} – from a database trigger when someone prays,
-//                     sends a message or asks for help (SOS)
+//                     gives kudos, sends a message or asks for help (SOS)
 //   {"type":"test"}   – from the Settings screen: "Send test notification" to yourself
 //   {"type":"config"} – returns the public notification key the app needs to subscribe
 //
@@ -10,8 +11,9 @@
 // function created itself and stored in app_secrets; the scheduler reads it from there).
 // test requests must carry the signed-in user's token (Authorization: Bearer …).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { addDays, localNow } from '../_shared/logic/dates.ts'
-import { dueReminders, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
+import { addDays, localNow, timeToMinutes } from '../_shared/logic/dates.ts'
+import { dueReminders, firesFor, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
+import { planSupportPrompts } from '../_shared/logic/support.ts'
 import { claimNotification, sendToUser } from '../_shared/sender.ts'
 import { getServerConfig } from '../_shared/config.ts'
 import { cors, json, signedInUser } from '../_shared/auth.ts'
@@ -88,10 +90,61 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
       sent += await sendToUser(admin, vapid, profile.id, { title: p.title, body: p.body, url: p.url, tag: p.kind })
     }
   }
+  sent += await supportPrompts(admin, vapid, now, profiles.data ?? [])
   return { users: userIds.length, sent }
 }
 
-/** Someone prayed, sent a message or asked for help: notify the right people. */
+/** Support prompts go out at this local time (once a week at most per person, see logic/support.ts). */
+const SUPPORT_TIME = '12:00'
+
+/** Gentle prompts when someone has had a hard stretch: to them, and to their group. */
+async function supportPrompts(admin: SupabaseClient, vapid: VapidKeys, now: Date, profiles: Record<string, any>[]) {
+  // Only the people for whom it's prompt time right now (so this runs about once a day per timezone).
+  const recipients = profiles.flatMap((p) => {
+    const local = localNow(now, p.timezone)
+    if (!firesFor(local.date, local.minutes, timeToMinutes(SUPPORT_TIME))) return []
+    if (inQuietHours(local.minutes, p.quiet_start, p.quiet_end)) return []
+    if (!p.notify_reminders && !p.notify_encouragement) return []
+    return [{ id: p.id as string, name: p.display_name as string, today: local.date, self: Boolean(p.notify_reminders), group: Boolean(p.notify_encouragement) }]
+  })
+  if (recipients.length === 0) return 0
+
+  const ids = recipients.map((r) => r.id)
+  const { data: mine, error: mErr } = await admin.from('group_members').select('group_id').in('user_id', ids)
+  if (mErr) throw mErr
+  const groupIds = [...new Set((mine ?? []).map((m) => m.group_id as string))]
+  const { data: members, error: gErr } = groupIds.length
+    ? await admin.from('group_members').select('group_id, user_id').in('group_id', groupIds)
+    : { data: [], error: null }
+  if (gErr) throw gErr
+  const peopleIds = [...new Set([...ids, ...(members ?? []).map((m) => m.user_id as string)])]
+
+  const since = addDays(now.toISOString().slice(0, 10), -14)
+  const [people, habits, checkins, shares] = await Promise.all([
+    admin.from('profiles').select('id, display_name, timezone').in('id', peopleIds),
+    admin.from('habits').select('id, user_id, type, schedule_days, start_date, archived').in('user_id', peopleIds).eq('archived', false),
+    admin.from('checkins').select('habit_id, user_id, date, outcome').in('user_id', peopleIds).gte('date', since),
+    groupIds.length ? admin.from('habit_shares').select('habit_id, group_id, visibility').in('group_id', groupIds) : Promise.resolve({ data: [], error: null }),
+  ])
+  for (const r of [people, habits, checkins, shares]) if (r.error) throw r.error
+
+  const plan = planSupportPrompts({
+    recipients,
+    people: (people.data ?? []).map((p) => ({ id: p.id, name: p.display_name, today: localNow(now, p.timezone).date })),
+    members: members ?? [],
+    habits: habits.data ?? [],
+    checkins: checkins.data ?? [],
+    shares: shares.data ?? [],
+  })
+  let sent = 0
+  for (const p of plan) {
+    if (!(await claimNotification(admin, p.user_id, p.kind, p.ref))) continue // already sent this week
+    sent += await sendToUser(admin, vapid, p.user_id, { title: p.title, body: p.body, url: p.url, tag: p.kind })
+  }
+  return sent
+}
+
+/** Someone prayed, gave kudos, sent a message or asked for help: notify the right people. */
 async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string) {
   const { data: e, error } = await admin.from('encouragements').select('*').eq('id', id).single()
   if (error || !e) return { sent: 0, error: 'not found' }
@@ -109,9 +162,11 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
       ? `${name} is asking for prayer and support right now`
       : e.kind === 'prayer'
         ? `${name} is praying for you 🙏`
-        : e.to_user
-          ? `${name} sent you some encouragement`
-          : `${name} shared something with your group`
+        : e.kind === 'kudos'
+          ? `${name} gave you kudos 👏`
+          : e.to_user
+            ? `${name} sent you a message`
+            : `${name} posted a message in your group`
 
   const now = new Date()
   let sent = 0
@@ -128,7 +183,7 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
     sent += await sendToUser(admin, vapid, uid, {
       title: e.kind === 'sos' ? 'Steadfast 🙏' : 'Steadfast',
       body,
-      url: `#/groups/${e.group_id}`,
+      url: `#/groups/${e.group_id}?tab=feed`, // straight to the group's feed
       tag: e.kind === 'sos' ? `sos-${id}` : 'encouragement',
     })
   }
