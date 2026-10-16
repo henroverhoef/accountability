@@ -15,6 +15,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { addDays, localNow, timeToMinutes } from '../_shared/logic/dates.ts'
 import { dueReminders, firesFor, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
 import { planSupportPrompts } from '../_shared/logic/support.ts'
+import { joinNames, prayerMoments } from '../_shared/logic/prayer.ts'
 import { claimNotification, sendToUser } from '../_shared/sender.ts'
 import { getServerConfig } from '../_shared/config.ts'
 import { cors, json, signedInUser } from '../_shared/auth.ts'
@@ -95,22 +96,33 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
   return { users: userIds.length, sent }
 }
 
-/** "I'll set aside time to pray later": remind people at the time they picked. */
+/**
+ * "I'll set aside a moment to pray later": remind people at the time they picked. Prayers
+ * that share a moment get one notification ("Time to pray for Jesse and Jared").
+ */
 async function prayerReminders(admin: SupabaseClient, vapid: VapidKeys, now: Date) {
-  const { data: due, error } = await admin.from('prayer_reminders').select('id, user_id, who, link')
-    .is('sent_at', null).lte('remind_at', now.toISOString()).limit(100)
+  const { data: due, error } = await admin.from('prayer_reminders').select('id, user_id, who, link, remind_at')
+    .is('sent_at', null).lte('remind_at', now.toISOString()).limit(200)
   if (error) throw error
+  if (!due?.length) return 0
+  // Claim them first so each is only ever sent once, even if two runs overlap.
+  const { data: claimed, error: claimErr } = await admin.from('prayer_reminders').update({ sent_at: now.toISOString() })
+    .in('id', due.map((r) => r.id)).is('sent_at', null).select('id, user_id, who, link, remind_at')
+  if (claimErr) throw claimErr
+
   let sent = 0
-  for (const r of due ?? []) {
-    // Claim it first so it's only ever sent once, even if two runs overlap.
-    const { data: claimed } = await admin.from('prayer_reminders').update({ sent_at: now.toISOString() }).eq('id', r.id).is('sent_at', null).select('id')
-    if (!claimed?.length) continue
-    sent += await sendToUser(admin, vapid, r.user_id, {
-      title: 'Steadfast 🙏',
-      body: `Time to pray for ${r.who}, like you planned`, // never the habit's name: it may show on a lock screen
-      url: `#${r.link || '/'}`, // the person's page (or the group's Overview): just a reminder, nothing to tick off
-      tag: `pray-${r.id}`,
-    })
+  for (const userId of new Set((claimed ?? []).map((r) => r.user_id as string))) {
+    for (const moment of prayerMoments((claimed ?? []).filter((r) => r.user_id === userId))) {
+      const first = moment.items[0]
+      sent += await sendToUser(admin, vapid, userId, {
+        title: 'Steadfast 🙏',
+        // Names only, never what it's about: it may show on a lock screen.
+        body: `Time to pray for ${joinNames(moment.items.map((r) => r.who))}, like you planned`,
+        // One prayer: that person's page. Several: Home, which lists them.
+        url: moment.items.length === 1 ? `#${first.link || '/'}` : '#/',
+        tag: `pray-${userId}-${moment.at}`,
+      })
+    }
   }
   return sent
 }

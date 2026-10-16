@@ -6,6 +6,7 @@ import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
 import { listMyGroups, listUpcomingPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
+import { prayerMoments } from '../lib/prayer'
 
 function timeAgo(iso: string): string {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
@@ -98,20 +99,22 @@ export default function Home() {
 
       {prayerPlans.data && prayerPlans.data.length > 0 && (
         <section className="card space-y-2 border-l-4 border-amber-400">
-          <h2 className="h2">🙏 Time you set aside to pray</h2>
-          <ul className="space-y-1">
-            {prayerPlans.data.map((r) => (
-              <li key={r.id}>
-                <Link to={r.link || '/groups'} className="flex items-center gap-2 py-1 text-sm">
-                  <span className="flex-1">
-                    <strong>{r.who === 'the group' ? 'The group' : r.who}</strong>{r.what ? ` · ${r.what}` : ''}
-                  </span>
-                  <span className="muted">
-                    {new Date(r.remind_at).toDateString() === new Date().toDateString() ? '' : 'tomorrow '}
-                    {Date.parse(r.remind_at) <= Date.now() ? 'now' : new Date(r.remind_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="text-slate-400" aria-hidden>›</span>
-                </Link>
+          <h2 className="h2">🙏 Moments you set aside to pray</h2>
+          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            {prayerMoments(prayerPlans.data).map((m) => (
+              <li key={m.at} className="flex gap-3 py-1.5 text-sm">
+                <span className="w-16 shrink-0 pt-1 font-semibold">
+                  {m.at <= Date.now() ? 'Now' : new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {m.at > Date.now() && new Date(m.at).toDateString() !== new Date().toDateString() && <span className="muted block text-xs font-normal">tomorrow</span>}
+                </span>
+                <span className="flex-1">
+                  {m.items.map((r) => (
+                    <Link key={r.id} to={r.link || '/groups'} className="flex items-center gap-2 py-1">
+                      <span className="flex-1"><strong>{r.who === 'the group' ? 'The group' : r.who}</strong>{r.what ? ` · ${r.what}` : ''}</span>
+                      <span className="text-slate-400" aria-hidden>›</span>
+                    </Link>
+                  ))}
+                </span>
               </li>
             ))}
           </ul>
