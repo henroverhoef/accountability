@@ -135,10 +135,42 @@ export default function Settings() {
         <DeleteAccount onDeleted={signOut} />
       </section>
 
+      <AppVersion />
+
       {admin.data && (
         <p className="text-center"><Link to="/admin" className="muted text-xs underline-offset-2 hover:underline">🛠 App overview</Link></p>
       )}
     </div>
+  )
+}
+
+/** Which version this phone runs, and a way to fetch the newest one right now. */
+function AppVersion() {
+  const [status, setStatus] = useState<string | null>(null)
+
+  async function check() {
+    setStatus('Checking…')
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration()
+      if (!reg) return setStatus('You’re on the latest version ✓')
+      await reg.update()
+      const next = reg.installing ?? reg.waiting
+      if (!next) return setStatus('You’re on the latest version ✓')
+      setStatus('Updating…')
+      // The new version takes over by itself; reload to show it.
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true })
+      setTimeout(() => window.location.reload(), 8000)
+    } catch {
+      setStatus('Couldn’t check right now (offline?)')
+    }
+  }
+
+  return (
+    <p className="muted text-center text-xs">
+      Version {import.meta.env.VITE_APP_VERSION ?? 'dev'} ·{' '}
+      <button className="underline underline-offset-2" onClick={check}>Check for updates</button>
+      {status && <span className="block">{status}</span>}
+    </p>
   )
 }
 
