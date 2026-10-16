@@ -1,8 +1,10 @@
 // Edge Function "push": sends all of Steadfast's notifications.
 //
 //   {"type":"tick"}   – every 5 minutes from pg_cron: reminders, nudges, wind-down …
-//                     prayer reminders people set ("I'll set aside time later"), and once a
-//                     day at noon, gentle support prompts (see logic/support.ts)
+//                     prayer reminders people set ("I'll set aside time later"), once a
+//                     day at noon, gentle support prompts (see logic/support.ts), and a
+//                     warning before an unused account is removed (30 days, see the
+//                     inactive_cleanup migration)
 //   {"type":"encouragement","id":…} – from a database trigger when someone prays,
 //                     gives kudos, sends a message or asks for help (SOS)
 //   {"type":"test"}   – from the Settings screen: "Send test notification" to yourself
@@ -93,7 +95,45 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
     }
   }
   sent += await supportPrompts(admin, vapid, now, profiles.data ?? [])
+  sent += await inactivityWarnings(admin, vapid, now, profiles.data ?? [])
   return { users: userIds.length, sent }
+}
+
+/** Accounts unused for this many days get one warning; the nightly cleanup removes them at 30. */
+const WARN_AFTER_DAYS = 23
+const REMOVE_AFTER_DAYS = 30
+
+/** "We miss you": one warning, in the daytime, a week before an unused account is removed. */
+async function inactivityWarnings(admin: SupabaseClient, vapid: VapidKeys, now: Date, profiles: Record<string, any>[]) {
+  try {
+    const [activity, admins] = await Promise.all([admin.rpc('account_activity'), admin.from('app_admins').select('user_id')])
+    if (activity.error) throw activity.error
+    const rows = (activity.data ?? []) as { user_id: string; last_active: string }[]
+    const lastActive = new Map(rows.map((r) => [r.user_id, r.last_active]))
+    const owners = new Set((admins.data ?? []).map((r) => r.user_id as string)) // never removed automatically
+    let sent = 0
+    for (const p of profiles) {
+      const last = lastActive.get(p.id)
+      if (!last || owners.has(p.id)) continue
+      const days = (now.getTime() - Date.parse(last)) / 86400000
+      if (days < WARN_AFTER_DAYS || days >= REMOVE_AFTER_DAYS) continue
+      const local = localNow(now, p.timezone)
+      if (local.minutes < 10 * 60 || local.minutes >= 20 * 60) continue // daytime only
+      if (inQuietHours(local.minutes, p.quiet_start, p.quiet_end)) continue
+      // One warning per quiet spell (the ref is when they were last active).
+      if (!(await claimNotification(admin, p.id, 'inactive_warning', last.slice(0, 10)))) continue
+      sent += await sendToUser(admin, vapid, p.id, {
+        title: 'Steadfast',
+        body: 'We miss you! Accounts unused for 30 days are removed. Open Steadfast this week to keep yours.',
+        url: '#/',
+        tag: 'inactive',
+      })
+    }
+    return sent
+  } catch (e) {
+    console.warn('inactivity warnings skipped:', e instanceof Error ? e.message : e) // never block the other reminders
+    return 0
+  }
 }
 
 /**

@@ -8,6 +8,8 @@ export interface AdminGroup { id: string; name: string; created_at: string; crea
 export interface AdminUser {
   user_id: string; name: string; created_at: string; groups: number; habits: number
   last_checkin: string | null; notifications: boolean; login_code: boolean
+  last_active?: string // latest of: opened the app, checked in, sent something, joined
+  is_admin?: boolean
 }
 export interface AdminOverview {
   totals: { users: number; groups: number; habits: number; checkins: number; checkins_7d: number; active_users_7d: number; push_users: number }
@@ -24,4 +26,10 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   const { data, error } = await supabase.rpc('admin_overview')
   if (error) throw error
   return data as AdminOverview
+}
+
+/** App owner: permanently remove someone's account and everything in it. */
+export async function adminDeleteAccount(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_delete_account', { p_user: userId })
+  if (error) throw error
 }

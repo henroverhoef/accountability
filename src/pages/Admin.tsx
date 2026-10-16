@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import ErrorText from '../components/ErrorText'
 import { useAsync } from '../components/useAsync'
-import { getAdminOverview, type AdminUser } from '../lib/admin'
+import { useState } from 'react'
+import { adminDeleteAccount, getAdminOverview, type AdminUser } from '../lib/admin'
+import { errorMessage } from '../components/ErrorText'
 import { daysBetween } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useData } from '../data/DataProvider'
@@ -30,6 +32,7 @@ export default function Admin() {
       </div>
       <h1 className="h1">App overview</h1>
       <p className="muted text-sm">Only you can see this. It shows who uses the app and which groups exist. Nobody's habits, answers or notes are included.</p>
+      <p className="muted text-sm">Accounts nobody has used for 30 days are removed automatically each night (people with notifications on get a warning a week before), and so are groups nobody in them has used for 30 days. Yours is never removed automatically.</p>
 
       <section className="grid grid-cols-3 gap-2 text-center">
         <Stat label="People" value={totals.users} />
@@ -64,12 +67,12 @@ export default function Admin() {
       {loners.length > 0 && (
         <>
           <h2 className="h2 pt-2">Not in a group ({loners.length})</h2>
-          <section className="card"><UserList users={loners} lastSeen={lastSeen} /></section>
+          <section className="card"><UserList users={loners} lastSeen={lastSeen} onRemoved={overview.reload} /></section>
         </>
       )}
 
       <h2 className="h2 pt-2">Everyone ({users.length})</h2>
-      <section className="card"><UserList users={users} lastSeen={lastSeen} /></section>
+      <section className="card"><UserList users={users} lastSeen={lastSeen} onRemoved={overview.reload} /></section>
     </div>
   )
 }
@@ -83,21 +86,46 @@ function Stat({ label, value }: { label: string; value: number }) {
   )
 }
 
-function UserList({ users, lastSeen }: { users: AdminUser[]; lastSeen: (d: string | null) => string }) {
+function UserList({ users, lastSeen, onRemoved }: { users: AdminUser[]; lastSeen: (d: string | null) => string; onRemoved: () => void }) {
   return (
     <ul className="divide-y divide-slate-200 text-sm dark:divide-slate-800">
-      {users.map((u) => (
-        <li key={u.user_id} className="space-y-0.5 py-2">
-          <div className="flex gap-2">
-            <span className="flex-1 font-medium">{u.name || 'No name yet'}</span>
-            <span className="muted">{lastSeen(u.last_checkin)}</span>
-          </div>
-          <div className="muted text-xs">
-            Joined {formatDate(u.created_at.slice(0, 10), { day: 'numeric', month: 'short' })} · {u.groups} group{u.groups === 1 ? '' : 's'} · {u.habits} habit{u.habits === 1 ? '' : 's'}
-            {u.notifications ? ' · 🔔' : ' · 🔕'}{u.login_code ? ' · 🔑' : ''}
-          </div>
-        </li>
-      ))}
+      {users.map((u) => <UserRow key={u.user_id} u={u} lastSeen={lastSeen} onRemoved={onRemoved} />)}
     </ul>
+  )
+}
+
+function UserRow({ u, lastSeen, onRemoved }: { u: AdminUser; lastSeen: (d: string | null) => string; onRemoved: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const activeDays = u.last_active ? Math.floor((Date.now() - Date.parse(u.last_active)) / 86400000) : null
+
+  async function remove() {
+    if (!confirm(`Remove ${u.name || 'this account'}? This permanently deletes the account with all their habits, check-ins and messages. It can't be undone.`)) return
+    setBusy(true)
+    try {
+      await adminDeleteAccount(u.user_id)
+      onRemoved()
+    } catch (e) {
+      alert(errorMessage(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="space-y-0.5 py-2">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 font-medium">{u.name || 'No name yet'}{u.is_admin && <span className="muted font-normal"> · you</span>}</span>
+        <span className="muted">{lastSeen(u.last_checkin)}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="muted flex-1 text-xs">
+          Joined {formatDate(u.created_at.slice(0, 10), { day: 'numeric', month: 'short' })} · {u.groups} group{u.groups === 1 ? '' : 's'} · {u.habits} habit{u.habits === 1 ? '' : 's'}
+          {u.notifications ? ' · 🔔' : ' · 🔕'}{u.login_code ? ' · 🔑' : ''}
+          {activeDays !== null && <> · active {activeDays === 0 ? 'today' : activeDays === 1 ? 'yesterday' : `${activeDays} days ago`}</>}
+        </span>
+        {!u.is_admin && (
+          <button className="text-xs font-medium text-rose-600 disabled:opacity-50" disabled={busy} onClick={remove}>{busy ? 'Removing…' : 'Remove'}</button>
+        )}
+      </div>
+    </li>
   )
 }

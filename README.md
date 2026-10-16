@@ -109,8 +109,13 @@ choose **I already use Steadfast** and type it in.
   they share with that group).
 - **Quick tip**: shown once after setup, explaining how to install the app and turn on
   notifications (Settings → Help shows it again).
+- **Unused accounts are removed after 30 days**: every night, accounts nobody has used for
+  30 days (no app opened, check-in or message) are deleted with all their data, and so are
+  groups nobody in them has used for 30 days. People with notifications on get one warning
+  a week before ("We miss you!…"). The app owner's account is never removed automatically.
 - **App overview** (app owner only): a small "🛠 App overview" link at the bottom of Settings shows
-  every group with its members, everyone's join date and last check-in, and totals. It never shows
+  every group with its members, everyone's join date, last check-in and last activity, and
+  totals, with a **Remove** button to delete an account by hand. It never shows
   habits, answers or notes. Only accounts in the `app_admins` table see it (add one in the SQL editor:
   `insert into app_admins (user_id) values ('<user id>');`).
 - **Weekly review** (Home → Week in review): days fully checked in, outcomes per habit,

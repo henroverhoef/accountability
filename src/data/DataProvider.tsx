@@ -194,6 +194,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Only reload when the logged-in user changes (timezone is read fresh above).
   }, [userId, flushQueue])
 
+  // Opening the app counts as being active: accounts unused for 30 days are removed
+  // (see the inactive_cleanup migration). At most every few hours, and quietly.
+  useEffect(() => {
+    if (!userId) return
+    const mark = () => { if (document.visibilityState === 'visible') markSeen(userId) }
+    mark()
+    document.addEventListener('visibilitychange', mark)
+    return () => document.removeEventListener('visibilitychange', mark)
+  }, [userId])
+
   const previousUser = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (userId) {
@@ -306,4 +316,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
+}
+
+/** Tell the server this account is in use (profiles.last_seen_at), at most every 6 hours. */
+function markSeen(userId: string) {
+  const key = `steadfast:seen:${userId}`
+  let last = 0
+  try { last = Number(localStorage.getItem(key)) || 0 } catch { /* no storage: just send it */ }
+  if (Date.now() - last < 6 * 3600 * 1000) return
+  supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', userId).then(({ error }) => {
+    if (error) return // offline: try again next time
+    try { localStorage.setItem(key, String(Date.now())) } catch { /* ignore */ }
+  })
 }
