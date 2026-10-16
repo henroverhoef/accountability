@@ -4,12 +4,13 @@ import { useData } from '../data/DataProvider'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import ShareSelect from '../components/ShareSelect'
 import { useAsync } from '../components/useAsync'
+import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
-  getOverview, inviteLink, listEncouragements, listMyShares, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
+  getOverview, inviteLink, listEncouragements, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
 import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
-import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
+import { describeAnswer, OUTCOME_STYLES } from '../lib/outcomes'
 
 type Tab = 'members' | 'feed' | 'sharing' | 'invite'
 const TABS: Tab[] = ['members', 'feed', 'sharing', 'invite']
@@ -20,6 +21,7 @@ export default function GroupDetail() {
   const me = session!.user.id
   const overview = useAsync(() => getOverview(id), [id])
   const feed = useAsync(() => listEncouragements(id), [id])
+  const reactions = useAsync(() => listReactions(id), [id])
   // The tab lives in the address (#/groups/…?tab=feed), so notifications can open the feed.
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'members'
@@ -27,16 +29,17 @@ export default function GroupDetail() {
 
   // Coming back to the app (e.g. from a notification): show what's new.
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload() } }
+    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload(); reactions.reload() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [overview.reload, feed.reload])
+  }, [overview.reload, feed.reload, reactions.reload])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /><Link to="/groups" className="btn-secondary mt-4">Back</Link></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
   const o = overview.data
 
-  const refresh = () => { overview.reload(); feed.reload() }
+  const refresh = () => { overview.reload(); feed.reload(); reactions.reload() }
+  const social = makeSocial(o, me, reactions.data ?? [], refresh)
 
   return (
     <div className="page space-y-4">
@@ -54,7 +57,7 @@ export default function GroupDetail() {
 
       {tab === 'members' && (
         <ul className="space-y-3">
-          {o.members.map((m) => <MemberCard key={m.user_id} o={o} member={m} me={me} onChange={refresh} />)}
+          {o.members.map((m) => <MemberCard key={m.user_id} o={o} member={m} social={social} />)}
         </ul>
       )}
       {tab === 'feed' && <Feed o={o} items={feed.data ?? []} me={me} onChange={refresh} />}
@@ -84,6 +87,11 @@ function GroupHeader({ o, onRenamed }: { o: GroupOverview; onRenamed: () => void
 }
 
 // ---------- members ---------------------------------------------------------
+
+export function makeSocial(o: GroupOverview, me: string, reactions: Encouragement[], onSent: () => void): Social {
+  const nameOf = (uid: string) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
+  return { groupId: o.group.id, me, reactions, nameOf, onSent }
+}
 
 export function daysSinceCheckin(m: GroupMember): number {
   const since = m.last_checkin_date ?? m.joined_at.slice(0, 10)
@@ -121,8 +129,8 @@ export function SupportPrompt({ name, reason }: { name: string; reason: 'hard' |
   )
 }
 
-function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: GroupMember; me: string; onChange: () => void }) {
-  const isMe = m.user_id === me
+function MemberCard({ o, member: m, social }: { o: GroupOverview; member: GroupMember; social: Social }) {
+  const isMe = m.user_id === social.me
   const name = m.display_name || 'Someone'
   const quietDays = daysSinceCheckin(m)
   const support = isMe ? null : memberSupportReason(o, m)
@@ -137,6 +145,7 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
           {m.role === 'admin' && <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-700">admin</span>}
           <span className="ml-1 text-slate-400" aria-hidden>›</span>
         </Link>
+        <ReactionLabel list={generalPrayersFor(social, m.user_id)} social={social} general />
         <span className="text-sm">
           {m.checked_in_today === true ? '✅ Checked in' : m.checked_in_today === false ? '⏳ Not yet' : '· Nothing due'}
         </span>
@@ -151,8 +160,7 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
       {habits.length > 0 && (
         <ul className="space-y-1">
           {habits.map((h) => (
-            <SharedHabitRow key={h.id} habit={h} checkins={o.checkins} today={m.today}
-              react={isMe ? undefined : { groupId: o.group.id, name, onSent: onChange }} />
+            <SharedHabitRow key={h.id} habit={h} checkins={o.checkins} today={m.today} social={social} reactAs={isMe ? null : name} />
           ))}
         </ul>
       )}
@@ -161,18 +169,19 @@ function MemberCard({ o, member: m, me, onChange }: { o: GroupOverview; member: 
         See {isMe ? 'what the group sees of you' : 'check-ins, tags and notes'} ›
       </Link>
 
-      {!isMe && <EncourageButtons groupId={o.group.id} toUser={m.user_id} onSent={onChange} />}
+      {!isMe && <EncourageButtons groupId={o.group.id} toUser={m.user_id} onSent={social.onSent} />}
     </li>
   )
 }
 
 /**
  * One shared habit on a member card: today's answer, or last night's until today's is in
- * (people often check in late, and friends look the next morning), plus kudos / praying.
+ * (people often check in late, and friends look the next morning), with 🙏/👏 counts
+ * and the kudos / praying button.
  */
-export function SharedHabitRow({ habit, checkins, today, react }: {
-  habit: SharedHabit; checkins: SharedCheckin[]; today: string
-  react?: { groupId: string; name: string; onSent: () => void } // not on your own card
+export function SharedHabitRow({ habit, checkins, today, social, reactAs }: {
+  habit: SharedHabit; checkins: SharedCheckin[]; today: string; social: Social
+  reactAs: string | null // the member's name; null on your own card (no kudos for yourself)
 }) {
   const mine = checkins.filter((c) => c.habit_id === habit.id)
   const latest = mine.find((c) => c.date === today) ?? mine.find((c) => c.date === addDays(today, -1))
@@ -180,6 +189,8 @@ export function SharedHabitRow({ habit, checkins, today, react }: {
   const streak = showResult
     ? habitStreak({ ...habit, archived: false }, mine.filter((c) => c.outcome).map((c) => c as CheckinLike), today).current
     : null
+  const lastNight = latest && latest.date !== today
+  const label = latest && <ReactionLabel list={reactionsFor(social, latest.id)} social={social} />
   return (
     <li className="flex min-h-10 items-center gap-2 text-sm">
       <span aria-hidden>{habit.icon}</span>
@@ -187,47 +198,21 @@ export function SharedHabitRow({ habit, checkins, today, react }: {
       {latest ? (
         <span className="text-right">
           <AnswerBadge habit={habit} checkin={latest} />
-          {latest.date !== today && <span className="muted block text-xs">last night</span>}
+          {(label || lastNight) && (
+            <span className="mt-0.5 flex items-center justify-end gap-1.5 text-xs">
+              {label}
+              {lastNight && <span className="muted">last night</span>}
+            </span>
+          )}
         </span>
       ) : <span className="muted">not yet</span>}
       {streak !== null && <span className="w-12 text-right font-semibold">🔥{streak}</span>}
-      {react && (
+      {reactAs && (
         <span className="w-10 text-right">
-          {latest && <CheckinReaction groupId={react.groupId} checkin={latest} habit={habit} name={react.name} onSent={react.onSent} />}
+          {latest && <CheckinReaction checkin={latest} habit={habit} name={reactAs} social={social} />}
         </span>
       )}
     </li>
-  )
-}
-
-/**
- * React to one check-in: 👏 kudos when it went well, 🙏 praying when it was hard.
- * Nothing when the result isn't shared (check-in only).
- */
-export function CheckinReaction({ groupId, checkin, habit, name, onSent }: {
-  groupId: string; checkin: SharedCheckin; habit: SharedHabit; name: string; onSent: () => void
-}) {
-  const [sent, setSent] = useState(false)
-  if (!checkin.outcome) return null
-  const kind = checkin.outcome === 'good' ? 'kudos' : 'prayer'
-  const icon = kind === 'kudos' ? '👏' : '🙏'
-  const label = kind === 'kudos' ? `Give ${name} kudos for ${habit.name}` : `Pray for ${name} about ${habit.name}`
-
-  async function send() {
-    try {
-      await sendEncouragement({ group_id: groupId, kind, to_user: checkin.user_id, checkin_id: checkin.id })
-      setSent(true)
-      onSent()
-    } catch (e) {
-      alert(errorMessage(e))
-    }
-  }
-
-  return (
-    <button className={`h-10 w-10 shrink-0 rounded-full text-lg ${sent ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-slate-100 dark:bg-slate-800'}`}
-      aria-label={sent ? `${label}: sent` : label} title={label} disabled={sent} onClick={send}>
-      {sent ? '✓' : icon}
-    </button>
   )
 }
 
@@ -291,23 +276,13 @@ export function EncourageButtons({ groupId, toUser, onSent }: { groupId: string;
 }
 
 // ---------- feed --------------------------------------------------------------
-// Messages, prayers, kudos and SOS. Individual check-ins aren't listed here (they'd
-// bury the messages); they're on each member's page.
+// Messages and SOS. Check-ins are on each member's page, and kudos and prayers show
+// as small 🙏/👏 labels on the check-in they're about, so the messages stay visible.
 
 function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encouragement[]; me: string; onChange: () => void }) {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const nameOf = (uid: string | null) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
-  const toName = (uid: string | null) => (uid === me ? 'you' : nameOf(uid))
-
-  /** "about 🛡️ Purity (Wed 8 Oct)" when it's about a check-in the group can see, else "in general". */
-  function about(e: Encouragement, word: 'about' | 'for'): string {
-    if (!e.checkin_id) return 'in general'
-    const c = o.checkins.find((x) => x.id === e.checkin_id)
-    const h = c && o.habits.find((x) => x.id === c.habit_id)
-    if (!c || !h) return `${word} a check-in`
-    return `${word} ${h.icon} ${h.name} (${formatDate(c.date)})`
-  }
 
   async function post() {
     setError(null)
@@ -335,21 +310,16 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
 
       {items.length === 0 && <p className="muted text-center">Nothing here yet.</p>}
       <ul className="space-y-2">
-        {items.map((e) => {
-          const icon = { sos: '🆘', prayer: '🙏', kudos: '👏', message: '✉️' }[e.kind]
-          const what =
-            e.kind === 'sos' ? 'asked for prayer and support'
-            : e.kind === 'prayer' ? `${e.from_user === me ? 'are' : 'is'} praying for ${toName(e.to_user)} ${about(e, 'about')}`
-            : e.kind === 'kudos' ? `gave ${toName(e.to_user)} kudos ${about(e, 'for')}`
-            : e.to_user ? `→ ${toName(e.to_user)}` : ''
-          return (
-            <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
-              <div><span aria-hidden>{icon}</span> <strong>{nameOf(e.from_user)}</strong> {what}</div>
-              {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
-              <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
-            </li>
-          )
-        })}
+        {items.map((e) => (
+          <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
+            <div>
+              <span aria-hidden>{e.kind === 'sos' ? '🆘' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
+              {e.kind === 'sos' ? 'asked for prayer and support' : e.to_user ? `→ ${e.to_user === me ? 'you' : nameOf(e.to_user)}` : ''}
+            </div>
+            {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
+            <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+          </li>
+        ))}
       </ul>
     </div>
   )

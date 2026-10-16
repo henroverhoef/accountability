@@ -3,10 +3,11 @@ import { useData } from '../data/DataProvider'
 import ErrorText from '../components/ErrorText'
 import Heatmap from '../components/Heatmap'
 import { useAsync } from '../components/useAsync'
-import { getOverview, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
+import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
+import { getOverview, listReactions, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
 import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
 import { averageScore, formatDate } from '../lib/outcomes'
-import { AnswerBadge, caughtUpLater, CheckinReaction, daysSinceCheckin, EncourageButtons, memberSupportReason, SupportPrompt } from './GroupDetail'
+import { AnswerBadge, caughtUpLater, daysSinceCheckin, EncourageButtons, makeSocial, memberSupportReason, SupportPrompt } from './GroupDetail'
 
 /**
  * One group member's check-ins: everything they share with this group, per habit.
@@ -18,6 +19,7 @@ export default function MemberDetail() {
   const { session } = useData()
   const me = session!.user.id
   const overview = useAsync(() => getOverview(id), [id])
+  const reactions = useAsync(() => listReactions(id), [id])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
@@ -30,13 +32,18 @@ export default function MemberDetail() {
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
   const quietDays = daysSinceCheckin(m)
   const support = isMe ? null : memberSupportReason(o, m)
+  const refresh = () => { overview.reload(); reactions.reload() }
+  const social = makeSocial(o, me, reactions.data ?? [], refresh)
 
   return (
     <div className="page space-y-4">
       <Link to={`/groups/${id}`} className="btn-ghost -ml-4">‹ {o.group.name}</Link>
 
       <header className="space-y-1">
-        <h1 className="h1">{name} {isMe && <span className="muted text-base font-normal">(you)</span>}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="h1">{name} {isMe && <span className="muted text-base font-normal">(you)</span>}</h1>
+          <ReactionLabel list={generalPrayersFor(social, m.user_id)} social={social} general />
+        </div>
         <p className="muted">
           {m.checked_in_today === true ? '✅ Checked in today' : m.checked_in_today === false ? '⏳ Not checked in yet today' : 'Nothing due today'}
           {m.last_checkin_date && m.checked_in_today !== true && ` · last check-in ${formatDate(m.last_checkin_date)}`}
@@ -49,7 +56,7 @@ export default function MemberDetail() {
         )}
       </header>
 
-      {!isMe && <EncourageButtons groupId={id} toUser={m.user_id} onSent={overview.reload} />}
+      {!isMe && <EncourageButtons groupId={id} toUser={m.user_id} onSent={refresh} />}
 
       {isMe && (
         <p className="card text-sm">This is what your group sees of you. Change it on the group’s <strong>Sharing</strong> tab.</p>
@@ -63,17 +70,17 @@ export default function MemberDetail() {
       ) : (
         habits.map((h) => (
           <HabitCard key={h.id} habit={h} checkins={o.checkins.filter((c) => c.habit_id === h.id)} today={m.today}
-            reactAs={isMe ? null : name} groupId={id} onChange={overview.reload} />
+            reactAs={isMe ? null : name} social={social} />
         ))
       )}
     </div>
   )
 }
 
-function HabitCard({ habit, checkins, today, reactAs, groupId, onChange }: {
+function HabitCard({ habit, checkins, today, reactAs, social }: {
   habit: SharedHabit; checkins: SharedCheckin[]; today: string
   reactAs: string | null // the member's name; null on your own page (no kudos for yourself)
-  groupId: string; onChange: () => void
+  social: Social
 }) {
   const showsResult = habit.visibility !== 'checkin'
   const streak = showsResult
@@ -114,7 +121,8 @@ function HabitCard({ habit, checkins, today, reactAs, groupId, onChange }: {
                     {caughtUpLater(c) && <span className="muted font-normal"> · caught up next morning</span>}
                   </span>
                   <AnswerBadge habit={habit} checkin={c} />
-                  {reactAs && <CheckinReaction groupId={groupId} checkin={c} habit={habit} name={reactAs} onSent={onChange} />}
+                  <ReactionLabel list={reactionsFor(social, c.id)} social={social} />
+                  {reactAs && <CheckinReaction checkin={c} habit={habit} name={reactAs} social={social} />}
                 </div>
                 {c.tags.length > 0 && <div className="flex flex-wrap gap-1">{c.tags.map((t) => <span key={t} className="rounded-full bg-slate-200 px-2 py-0.5 text-xs dark:bg-slate-700">{t}</span>)}</div>}
                 {c.note && <p className="whitespace-pre-wrap rounded-lg bg-slate-100 p-2 dark:bg-slate-800">{c.note}</p>}

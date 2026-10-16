@@ -4,7 +4,7 @@ import { useData } from '../data/DataProvider'
 import { dayProgress, habitStreak, honestyStreak, supportReason, weekKey } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
-import { listMyGroups, recentEncouragements } from '../lib/groups'
+import { listMyGroups, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
 
 function timeAgo(iso: string): string {
@@ -25,13 +25,20 @@ const ENCOURAGEMENT_TEXT = {
 } as const
 
 export default function Home() {
-  const { profile, activeHabits, checkins, today, yesterday } = useData()
+  const { profile, session, habits, activeHabits, checkins, today, yesterday } = useData()
   const todayProgress = dayProgress(activeHabits, checkins, today)
   const yesterdayProgress = dayProgress(activeHabits, checkins, yesterday)
   const honesty = honestyStreak(activeHabits, checkins, today)
   const encouragement = useAsync(() => recentEncouragements(3), [])
   // After a hard stretch (hidden rule, see logic/support.ts): encourage reaching out.
   const hardStretch = supportReason(activeHabits, checkins, today) === 'hard'
+
+  /** " about 🛡️ Purity" / " for 🛡️ Purity" when a prayer or kudos was about one of my check-ins. */
+  const about = (e: RecentEncouragement) => {
+    const c = e.checkin_id ? checkins.find((x) => x.id === e.checkin_id) : undefined
+    const h = c && habits.find((x) => x.id === c.habit_id)
+    return h ? ` ${e.kind === 'kudos' ? 'for' : 'about'} ${h.icon} ${h.name}` : ''
+  }
 
   return (
     <div className="page space-y-4">
@@ -94,10 +101,12 @@ export default function Home() {
           <ul className="space-y-2">
             {encouragement.data.map((e) => (
               <li key={e.id}>
-                <Link to={`/groups/${e.group_id}?tab=feed`} className="block text-sm">
+                {/* Prayers and kudos open your own page in that group (they show on your check-ins); the rest open the feed. */}
+                <Link to={e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block text-sm">
                   <span aria-hidden>{ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
                   <strong>{e.from_name}</strong>{' '}
                   {e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
+                  {(e.kind === 'prayer' || e.kind === 'kudos') && about(e)}
                   <span className="muted"> · {timeAgo(e.created_at)}</span>
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}
                 </Link>

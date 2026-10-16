@@ -89,6 +89,7 @@ export interface RecentEncouragement {
   kind: Encouragement['kind']
   message: string | null
   to_me: boolean
+  checkin_id: string | null // which of MY check-ins a prayer or kudos was about
   created_at: string
 }
 
@@ -107,10 +108,17 @@ export const renameGroup = (groupId: string, name: string) => unwrap(supabase.fr
 export const removeMember = (groupId: string, userId: string) =>
   unwrap(supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId))
 
+/** The group feed: messages and SOS (kudos and prayers show on the check-ins instead). */
 export const listEncouragements = (groupId: string) =>
-  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).order('created_at', { ascending: false }).limit(50))
+  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['message', 'sos'])
+    .order('created_at', { ascending: false }).limit(50))
 
-export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>(supabase.rpc('recent_encouragements', { p_limit: limit }))
+/** Kudos and prayers in a group over the last few weeks (shown as 🙏 2 / 👏 3 labels). */
+export const listReactions = (groupId: string) =>
+  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos'])
+    .gte('created_at', new Date(Date.now() - 45 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(1000))
+
+export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>(supabase.rpc('recent_for_me', { p_limit: limit }))
 
 export function sendEncouragement(e: { group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null }) {
   return unwrap(supabase.from('encouragements').insert({ ...e, message: e.message?.trim() || null }))
