@@ -4,7 +4,7 @@ import { useData } from '../data/DataProvider'
 import { dayProgress, habitStreak, honestyStreak, supportReason, weekKey } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
-import { listMyGroups, recentEncouragements, type RecentEncouragement } from '../lib/groups'
+import { listMyGroups, listOpenPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
 
 function timeAgo(iso: string): string {
@@ -30,6 +30,7 @@ export default function Home() {
   const yesterdayProgress = dayProgress(activeHabits, checkins, yesterday)
   const honesty = honestyStreak(activeHabits, checkins, today)
   const encouragement = useAsync(() => recentEncouragements(3), [])
+  const prayerPlans = useAsync(listOpenPrayerReminders, [])
   // After a hard stretch (hidden rule, see logic/support.ts): encourage reaching out.
   const hardStretch = supportReason(activeHabits, checkins, today) === 'hard'
 
@@ -95,6 +96,25 @@ export default function Home() {
         </div>
       </section>
 
+      {prayerPlans.data && prayerPlans.data.length > 0 && (
+        <section className="card space-y-2 border-l-4 border-amber-400">
+          <h2 className="h2">🙏 Time you set aside to pray</h2>
+          <ul className="space-y-1">
+            {prayerPlans.data.map((r) => (
+              <li key={r.id}>
+                <Link to={`/pray/${r.id}`} className="flex items-center gap-2 py-1 text-sm">
+                  <span className="flex-1">
+                    <strong>{r.who === 'the group' ? 'The group' : r.who}</strong>{r.what ? ` · ${r.what}` : ''}
+                  </span>
+                  <span className="muted">{new Date(r.remind_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">Pray ›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {encouragement.data && encouragement.data.length > 0 && (
         <section className="card">
           <h2 className="h2 mb-2">From your groups</h2>
@@ -102,10 +122,12 @@ export default function Home() {
             {encouragement.data.map((e) => (
               <li key={e.id}>
                 {/* Prayers and kudos open your own page in that group (they show on your check-ins); the rest open the feed. */}
-                <Link to={e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block text-sm">
+                <Link to={e.kind === 'prayer' && !e.to_me ? `/groups/${e.group_id}?tab=overview`
+                  : e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block text-sm">
                   <span aria-hidden>{ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
                   <strong>{e.from_name}</strong>{' '}
-                  {e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
+                  {e.kind === 'prayer' && !e.to_me ? `prayed for ${e.group_name}`
+                    : e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
                   {(e.kind === 'prayer' || e.kind === 'kudos') && about(e)}
                   <span className="muted"> · {timeAgo(e.created_at)}</span>
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}

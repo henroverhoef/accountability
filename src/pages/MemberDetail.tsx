@@ -56,7 +56,7 @@ export default function MemberDetail() {
         )}
       </header>
 
-      {!isMe && <EncourageButtons groupId={id} toUser={m.user_id} onSent={refresh} />}
+      {!isMe && <EncourageButtons social={social} toUser={m.user_id} name={name} />}
 
       {isMe && (
         <p className="card text-sm">This is what your group sees of you. Change it on the group’s <strong>Sharing</strong> tab.</p>

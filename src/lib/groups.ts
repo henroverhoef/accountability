@@ -78,6 +78,7 @@ export interface Encouragement {
   checkin_id: string | null
   kind: 'prayer' | 'message' | 'sos' | 'kudos'
   message: string | null
+  topic?: string | null // a prayer for the whole group about one shared habit
   created_at: string
 }
 
@@ -120,7 +121,9 @@ export const listReactions = (groupId: string) =>
 
 export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>(supabase.rpc('recent_for_me', { p_limit: limit }))
 
-export function sendEncouragement(e: { group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null }) {
+export function sendEncouragement(e: {
+  group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null; topic?: string | null
+}) {
   return unwrap(supabase.from('encouragements').insert({ ...e, message: e.message?.trim() || null }))
 }
 
@@ -139,3 +142,29 @@ export async function setShare(habitId: string, groupId: string, visibility: Vis
 export function inviteLink(code: string) {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/join/${code}`
 }
+
+// ---------- "I'll set aside time to pray later" -----------------------------------
+// Private to you (RLS); the server sends a reminder at remind_at.
+
+export interface PrayerReminder {
+  id: string
+  group_id: string | null
+  who: string // "Jesse" / "the group"
+  what: string | null // "Purity"
+  link: string | null
+  remind_at: string
+  sent_at: string | null
+  prayed_at: string | null
+}
+
+export const addPrayerReminder = (r: { group_id: string; who: string; what: string | null; link: string | null; remind_at: string }) =>
+  unwrap(supabase.from('prayer_reminders').insert(r))
+
+/** Reminders from the last day that you haven't marked as prayed yet. */
+export const listOpenPrayerReminders = () =>
+  unwrap<PrayerReminder[]>(supabase.from('prayer_reminders').select('*').is('prayed_at', null)
+    .gte('remind_at', new Date(Date.now() - 86400000).toISOString()).order('remind_at'))
+
+export const getPrayerReminder = (id: string) => unwrap<PrayerReminder>(supabase.from('prayer_reminders').select('*').eq('id', id).single())
+
+export const markPrayed = (id: string) => unwrap(supabase.from('prayer_reminders').update({ prayed_at: new Date().toISOString() }).eq('id', id))

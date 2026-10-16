@@ -4,7 +4,9 @@ import { useData } from '../data/DataProvider'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import ShareSelect from '../components/ShareSelect'
 import { useAsync } from '../components/useAsync'
-import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
+import HabitPot from '../components/HabitPot'
+import PrayerPrompt from '../components/PrayerPrompt'
+import { CheckinReaction, generalPrayersFor, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
   getOverview, inviteLink, listEncouragements, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
@@ -12,8 +14,8 @@ import {
 import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
 import { describeAnswer, OUTCOME_STYLES } from '../lib/outcomes'
 
-type Tab = 'members' | 'feed' | 'sharing' | 'invite'
-const TABS: Tab[] = ['members', 'feed', 'sharing', 'invite']
+type Tab = 'members' | 'overview' | 'feed' | 'sharing' | 'invite'
+const TABS: Tab[] = ['members', 'overview', 'feed', 'sharing', 'invite']
 
 export default function GroupDetail() {
   const { id = '' } = useParams()
@@ -46,10 +48,10 @@ export default function GroupDetail() {
       <Link to="/groups" className="btn-ghost -ml-4">‹ Groups</Link>
       <GroupHeader o={o} onRenamed={overview.reload} />
 
-      <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-800" role="tablist">
+      <div className="grid grid-cols-5 gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-800" role="tablist">
         {TABS.map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-            className={`min-h-11 rounded-lg text-sm font-semibold capitalize ${tab === t ? 'bg-white shadow dark:bg-slate-950' : 'text-slate-600 dark:text-slate-400'}`}>
+            className={`min-h-11 rounded-lg text-[13px] font-semibold capitalize ${tab === t ? 'bg-white shadow dark:bg-slate-950' : 'text-slate-600 dark:text-slate-400'}`}>
             {t}
           </button>
         ))}
@@ -60,6 +62,7 @@ export default function GroupDetail() {
           {o.members.map((m) => <MemberCard key={m.user_id} o={o} member={m} social={social} />)}
         </ul>
       )}
+      {tab === 'overview' && <HabitPot o={o} social={social} />}
       {tab === 'feed' && <Feed o={o} items={feed.data ?? []} me={me} onChange={refresh} />}
       {tab === 'sharing' && <MySharing groupId={id} onChange={overview.reload} />}
       {tab === 'invite' && <Invite o={o} me={me} onChange={overview.reload} />}
@@ -169,7 +172,7 @@ function MemberCard({ o, member: m, social }: { o: GroupOverview; member: GroupM
         See {isMe ? 'what the group sees of you' : 'check-ins, tags and notes'} ›
       </Link>
 
-      {!isMe && <EncourageButtons groupId={o.group.id} toUser={m.user_id} onSent={social.onSent} />}
+      {!isMe && <EncourageButtons social={social} toUser={m.user_id} name={name} />}
     </li>
   )
 }
@@ -233,21 +236,23 @@ export function caughtUpLater(c: SharedCheckin): boolean {
   return new Date(c.created_at).toLocaleDateString('en-CA') > c.date
 }
 
-/** On a member: pray for them in general, or send them a message. */
-export function EncourageButtons({ groupId, toUser, onSent }: { groupId: string; toUser: string; onSent: () => void }) {
+/** On a member: pray for them in general (after a moment to actually pray), or send them a message. */
+export function EncourageButtons({ social, toUser, name }: { social: Social; toUser: string; name: string }) {
   const [writing, setWriting] = useState(false)
+  const [praying, setPraying] = useState(false)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const pray = prayActions(social, { toUser, who: name, link: `/groups/${social.groupId}/member/${toUser}` })
 
-  async function send(kind: 'prayer' | 'message') {
+  async function sendMessage() {
     setError(null)
     try {
-      await sendEncouragement({ group_id: groupId, kind, to_user: toUser, message: kind === 'message' ? text : null })
-      setStatus(kind === 'prayer' ? '🙏 They’ll know you’re praying.' : 'Sent ✓')
+      await sendEncouragement({ group_id: social.groupId, kind: 'message', to_user: toUser, message: text })
+      setStatus('Sent ✓')
       setText('')
       setWriting(false)
-      onSent()
+      social.onSent()
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -256,16 +261,22 @@ export function EncourageButtons({ groupId, toUser, onSent }: { groupId: string;
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <button className="btn-secondary flex-1" onClick={() => send('prayer')}>🙏 Praying for you</button>
+        <button className="btn-secondary flex-1" onClick={() => setPraying(true)}>🙏 Pray for {name}</button>
         <button className="btn-secondary flex-1" onClick={() => setWriting(!writing)} aria-expanded={writing}>✉️ Message</button>
       </div>
+      {praying && (
+        <PrayerPrompt subject={name}
+          onPrayed={async () => { await pray.onPrayed(); setStatus(`🙏 ${name} will know you’re praying.`) }}
+          onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}
+          onClose={() => setPraying(false)} />
+      )}
       {writing && (
         <div className="space-y-2">
           <label className="sr-only" htmlFor={`msg-${toUser}`}>Message</label>
           <textarea id={`msg-${toUser}`} className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="Only you two see this" />
           <div className="flex items-center justify-between">
             <span className="muted">{280 - text.length}</span>
-            <button className="btn-primary" disabled={!text.trim()} onClick={() => send('message')}>Send</button>
+            <button className="btn-primary" disabled={!text.trim()} onClick={sendMessage}>Send</button>
           </div>
         </div>
       )}

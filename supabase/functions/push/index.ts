@@ -1,7 +1,8 @@
 // Edge Function "push": sends all of Steadfast's notifications.
 //
 //   {"type":"tick"}   – every 5 minutes from pg_cron: reminders, nudges, wind-down …
-//                     and, once a day at noon, gentle support prompts (see logic/support.ts)
+//                     prayer reminders people set ("I'll set aside time later"), and once a
+//                     day at noon, gentle support prompts (see logic/support.ts)
 //   {"type":"encouragement","id":…} – from a database trigger when someone prays,
 //                     gives kudos, sends a message or asks for help (SOS)
 //   {"type":"test"}   – from the Settings screen: "Send test notification" to yourself
@@ -67,7 +68,8 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
   const { data: subs, error: subErr } = await admin.from('push_subscriptions').select('user_id')
   if (subErr) throw subErr
   const userIds = [...new Set((subs ?? []).map((s) => s.user_id as string))]
-  if (userIds.length === 0) return { users: 0, sent: 0 }
+  let sent = await prayerReminders(admin, vapid, now)
+  if (userIds.length === 0) return { users: 0, sent }
 
   const utcToday = now.toISOString().slice(0, 10)
   const [profiles, habits, checkins] = await Promise.all([
@@ -79,7 +81,6 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
   if (habits.error) throw habits.error
   if (checkins.error) throw checkins.error
 
-  let sent = 0
   for (const profile of profiles.data ?? []) {
     const mine = (habits.data ?? []).filter((h) => h.user_id === profile.id) as ReminderHabit[]
     const myCheckins = (checkins.data ?? []).filter((c) => c.user_id === profile.id)
@@ -92,6 +93,26 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
   }
   sent += await supportPrompts(admin, vapid, now, profiles.data ?? [])
   return { users: userIds.length, sent }
+}
+
+/** "I'll set aside time to pray later": remind people at the time they picked. */
+async function prayerReminders(admin: SupabaseClient, vapid: VapidKeys, now: Date) {
+  const { data: due, error } = await admin.from('prayer_reminders').select('id, user_id, who')
+    .is('sent_at', null).is('prayed_at', null).lte('remind_at', now.toISOString()).limit(100)
+  if (error) throw error
+  let sent = 0
+  for (const r of due ?? []) {
+    // Claim it first so it's only ever sent once, even if two runs overlap.
+    const { data: claimed } = await admin.from('prayer_reminders').update({ sent_at: now.toISOString() }).eq('id', r.id).is('sent_at', null).select('id')
+    if (!claimed?.length) continue
+    sent += await sendToUser(admin, vapid, r.user_id, {
+      title: 'Steadfast 🙏',
+      body: `Time to pray for ${r.who}, like you planned`, // never the habit's name: it may show on a lock screen
+      url: `#/pray/${r.id}`,
+      tag: `pray-${r.id}`,
+    })
+  }
+  return sent
 }
 
 /** Support prompts go out at this local time (once a week at most per person, see logic/support.ts). */
@@ -161,7 +182,7 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
     e.kind === 'sos'
       ? `${name} is asking for prayer and support right now`
       : e.kind === 'prayer'
-        ? `${name} is praying for you 🙏`
+        ? e.to_user ? `${name} is praying for you 🙏` : `${name} prayed for your group 🙏`
         : e.kind === 'kudos'
           ? `${name} gave you kudos 👏`
           : e.to_user
@@ -185,7 +206,9 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
       body,
       // Messages and SOS open the group's feed; prayers and kudos open your own page in
       // the group, where they show on the check-in they're about.
-      url: e.kind === 'prayer' || e.kind === 'kudos' ? `#/groups/${e.group_id}/member/${uid}` : `#/groups/${e.group_id}?tab=feed`,
+      // (a prayer for the whole group opens the group's Overview, where it shows on the habit)
+      url: e.kind === 'prayer' && !e.to_user ? `#/groups/${e.group_id}?tab=overview`
+        : e.kind === 'prayer' || e.kind === 'kudos' ? `#/groups/${e.group_id}/member/${uid}` : `#/groups/${e.group_id}?tab=feed`,
       tag: e.kind === 'sos' ? `sos-${id}` : 'encouragement',
     })
   }
