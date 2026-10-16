@@ -18,7 +18,6 @@ import Join from './pages/Join'
 import Sos from './pages/Sos'
 import Summary from './pages/Summary'
 import Admin from './pages/Admin'
-import Pray from './pages/Pray'
 import PinLock from './components/PinLock'
 
 export default function App() {
@@ -73,7 +72,6 @@ function Gate() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/summary" element={<Summary />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/pray/:id" element={<Pray />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

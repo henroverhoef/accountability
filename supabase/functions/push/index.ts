@@ -97,8 +97,8 @@ async function tick(admin: SupabaseClient, vapid: VapidKeys) {
 
 /** "I'll set aside time to pray later": remind people at the time they picked. */
 async function prayerReminders(admin: SupabaseClient, vapid: VapidKeys, now: Date) {
-  const { data: due, error } = await admin.from('prayer_reminders').select('id, user_id, who')
-    .is('sent_at', null).is('prayed_at', null).lte('remind_at', now.toISOString()).limit(100)
+  const { data: due, error } = await admin.from('prayer_reminders').select('id, user_id, who, link')
+    .is('sent_at', null).lte('remind_at', now.toISOString()).limit(100)
   if (error) throw error
   let sent = 0
   for (const r of due ?? []) {
@@ -108,7 +108,7 @@ async function prayerReminders(admin: SupabaseClient, vapid: VapidKeys, now: Dat
     sent += await sendToUser(admin, vapid, r.user_id, {
       title: 'Steadfast 🙏',
       body: `Time to pray for ${r.who}, like you planned`, // never the habit's name: it may show on a lock screen
-      url: `#/pray/${r.id}`,
+      url: `#${r.link || '/'}`, // the person's page (or the group's Overview): just a reminder, nothing to tick off
       tag: `pray-${r.id}`,
     })
   }

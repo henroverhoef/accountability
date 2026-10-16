@@ -73,7 +73,7 @@ function Category({ c, social }: { c: PotCategory; social: Social }) {
       {status && <p className="muted text-sm">{status}</p>}
 
       {praying && (
-        <PrayerPrompt subject={subject}
+        <PrayerPrompt subject={subject} who={c.people.length === 1 ? (names[0] === 'you' ? 'this' : names[0]) : 'the group'}
           details={<><span className="font-semibold">Shared by {names.join(', ')}.</span>{total > 0 && <span className="block">This week: {summary}</span>}</>}
           onPrayed={async () => { await pray.onPrayed(); setStatus('🙏 The group will see you prayed for this.') }}
           onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}

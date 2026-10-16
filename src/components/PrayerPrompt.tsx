@@ -4,36 +4,34 @@ import ErrorText, { errorMessage } from './ErrorText'
 /**
  * Before a 🙏 is sent: a moment to actually pray. "I prayed" or "I'll set aside time"
  * (with a reminder at the time you pick). Either way the person sees you're praying.
+ * After "I prayed", a short word to keep praying, not just tick a box.
  */
-export default function PrayerPrompt({ subject, details, onPrayed, onLater, onClose }: {
+export default function PrayerPrompt({ subject, who, details, onPrayed, onLater, onClose }: {
   subject: string // "Jesse's Purity", "Jesse", "everyone's No Short-form Video"
+  who?: string // "Jesse", "the group" (defaults to the subject)
   details?: React.ReactNode // what they shared, to pray into
   onPrayed: () => Promise<void>
   onLater?: (at: Date) => Promise<void> // leave out to only offer "I prayed"
   onClose: () => void
 }) {
-  const [seconds, setSeconds] = useState(0)
   const [later, setLater] = useState(false)
+  const [prayed, setPrayed] = useState(false)
   const [time, setTime] = useState(defaultLaterTime)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => Math.min(s + 1, 60)), 1000)
-    return () => clearInterval(t)
-  }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  async function run(fn: () => Promise<void>) {
+  async function run(fn: () => Promise<void>, then: () => void) {
     setBusy(true)
     setError(null)
     try {
       await fn()
-      onClose()
+      then()
     } catch (e) {
       setError(errorMessage(e))
       setBusy(false)
@@ -45,6 +43,14 @@ export default function PrayerPrompt({ subject, details, onPrayed, onLater, onCl
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-3 text-left font-normal sm:items-center" role="dialog" aria-modal="true" aria-labelledby="pray-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      {prayed ? (
+        <div className="card w-full max-w-md space-y-4 p-5 text-center shadow-2xl">
+          <h2 id="pray-title" className="text-xl font-bold">🙏 Keep on praying unceasingly</h2>
+          <blockquote className="italic">“Pray without ceasing.”<footer className="muted mt-1 text-sm not-italic">1 Thessalonians 5:17</footer></blockquote>
+          <p>Thank you for praying. Keep listening to the Holy Spirit today: if He brings {who ?? subject} to mind again, pray again.</p>
+          <button className="btn-primary w-full" onClick={onClose}>Amen</button>
+        </div>
+      ) : (
       <div className="card w-full max-w-md space-y-4 p-5 shadow-2xl">
         <h2 id="pray-title" className="text-xl font-bold">🙏 Pray with intention</h2>
         <p>
@@ -53,15 +59,10 @@ export default function PrayerPrompt({ subject, details, onPrayed, onLater, onCl
         </p>
         {details && <div className="rounded-lg bg-slate-100 p-3 text-sm dark:bg-slate-800">{details}</div>}
 
-        <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-          <div className="h-full rounded-full bg-amber-400 transition-all duration-1000 ease-linear" style={{ width: `${(seconds / 60) * 100}%` }} />
-        </div>
-        <p className="muted -mt-2 text-xs">{seconds < 60 ? `${60 - seconds}s of the minute left` : 'A minute well spent 🙌'}</p>
-
         <ErrorText error={error} />
         {!later ? (
           <div className="space-y-2">
-            <button className="btn-primary w-full" disabled={busy} onClick={() => run(onPrayed)}>🙏 I prayed</button>
+            <button className="btn-primary w-full" disabled={busy} onClick={() => run(onPrayed, () => setPrayed(true))}>🙏 I prayed</button>
             {onLater && <button className="btn-secondary w-full" disabled={busy} onClick={() => setLater(true)}>⏰ I’ll set aside time later</button>}
             <button className="btn-ghost w-full" disabled={busy} onClick={onClose}>Cancel</button>
           </div>
@@ -70,11 +71,12 @@ export default function PrayerPrompt({ subject, details, onPrayed, onLater, onCl
             <label htmlFor="pray-at" className="label">When will you pray? We’ll remind you.</label>
             <input id="pray-at" type="time" className="input text-lg" value={time} onChange={(e) => setTime(e.target.value)} />
             <p className="muted text-sm">{at.toDateString() === new Date().toDateString() ? 'Today' : 'Tomorrow'} at {time}</p>
-            <button className="btn-primary w-full" disabled={busy || !time} onClick={() => run(() => onLater!(at))}>⏰ Remind me</button>
+            <button className="btn-primary w-full" disabled={busy || !time} onClick={() => run(() => onLater!(at), onClose)}>⏰ Remind me</button>
             <button className="btn-ghost w-full" disabled={busy} onClick={() => setLater(false)}>Back</button>
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

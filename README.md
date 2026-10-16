@@ -140,10 +140,11 @@ choose **I already use Steadfast** and type it in.
   as a 🙏 label on the habit and notifies the group). Only what each person shares with the
   group is included.
 - **Praying with intention**: every 🙏 first opens a short pop-up: take a minute to pray
-  now (**I prayed**), or **I'll set aside time later** and pick a time. The app then reminds
-  you ("Time to pray for Jesse, like you planned"), Home shows the plan until you've prayed,
-  and the reminder opens a short page with **I prayed**. Either choice counts as praying, so
-  the person sees the 🙏.
+  now (**I prayed**, followed by a short "Keep on praying unceasingly" word), or **I'll set
+  aside time later** and pick a time. At that time a notification reminds you ("Time to pray
+  for Jesse, like you planned"); there's nothing to tick off afterwards. Home lists the
+  times you've set aside until an hour after each. Either choice counts as praying, so the
+  person sees the 🙏.
 - **Kudos and praying**: on a member's card and page, each shared answer gets 👏 when it went
   well and 🙏 when it was hard. A small label on the answer ("🙏 2 · 👏 1") counts the people;
   tap it to see who. "🙏 Praying for you" under a member is a prayer in general and shows as a

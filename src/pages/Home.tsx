@@ -4,7 +4,7 @@ import { useData } from '../data/DataProvider'
 import { dayProgress, habitStreak, honestyStreak, supportReason, weekKey } from '../lib/logic'
 import { formatDate } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
-import { listMyGroups, listOpenPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
+import { listMyGroups, listUpcomingPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
 
 function timeAgo(iso: string): string {
@@ -30,7 +30,7 @@ export default function Home() {
   const yesterdayProgress = dayProgress(activeHabits, checkins, yesterday)
   const honesty = honestyStreak(activeHabits, checkins, today)
   const encouragement = useAsync(() => recentEncouragements(3), [])
-  const prayerPlans = useAsync(listOpenPrayerReminders, [])
+  const prayerPlans = useAsync(listUpcomingPrayerReminders, [])
   // After a hard stretch (hidden rule, see logic/support.ts): encourage reaching out.
   const hardStretch = supportReason(activeHabits, checkins, today) === 'hard'
 
@@ -102,12 +102,15 @@ export default function Home() {
           <ul className="space-y-1">
             {prayerPlans.data.map((r) => (
               <li key={r.id}>
-                <Link to={`/pray/${r.id}`} className="flex items-center gap-2 py-1 text-sm">
+                <Link to={r.link || '/groups'} className="flex items-center gap-2 py-1 text-sm">
                   <span className="flex-1">
                     <strong>{r.who === 'the group' ? 'The group' : r.who}</strong>{r.what ? ` · ${r.what}` : ''}
                   </span>
-                  <span className="muted">{new Date(r.remind_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="font-medium text-amber-700 dark:text-amber-400">Pray ›</span>
+                  <span className="muted">
+                    {new Date(r.remind_at).toDateString() === new Date().toDateString() ? '' : 'tomorrow '}
+                    {Date.parse(r.remind_at) <= Date.now() ? 'now' : new Date(r.remind_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-slate-400" aria-hidden>›</span>
                 </Link>
               </li>
             ))}

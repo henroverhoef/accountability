@@ -144,7 +144,8 @@ export function inviteLink(code: string) {
 }
 
 // ---------- "I'll set aside time to pray later" -----------------------------------
-// Private to you (RLS); the server sends a reminder at remind_at.
+// Private to you (RLS); the server sends a notification at remind_at. That's all: there's
+// nothing to tick off afterwards.
 
 export interface PrayerReminder {
   id: string
@@ -154,17 +155,12 @@ export interface PrayerReminder {
   link: string | null
   remind_at: string
   sent_at: string | null
-  prayed_at: string | null
 }
 
 export const addPrayerReminder = (r: { group_id: string; who: string; what: string | null; link: string | null; remind_at: string }) =>
   unwrap(supabase.from('prayer_reminders').insert(r))
 
-/** Reminders from the last day that you haven't marked as prayed yet. */
-export const listOpenPrayerReminders = () =>
-  unwrap<PrayerReminder[]>(supabase.from('prayer_reminders').select('*').is('prayed_at', null)
-    .gte('remind_at', new Date(Date.now() - 86400000).toISOString()).order('remind_at'))
-
-export const getPrayerReminder = (id: string) => unwrap<PrayerReminder>(supabase.from('prayer_reminders').select('*').eq('id', id).single())
-
-export const markPrayed = (id: string) => unwrap(supabase.from('prayer_reminders').update({ prayed_at: new Date().toISOString() }).eq('id', id))
+/** Times you set aside to pray that are still coming up (or were in the last hour), for Home. */
+export const listUpcomingPrayerReminders = () =>
+  unwrap<PrayerReminder[]>(supabase.from('prayer_reminders').select('*')
+    .gte('remind_at', new Date(Date.now() - 3600000).toISOString()).order('remind_at'))

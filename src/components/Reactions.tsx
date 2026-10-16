@@ -142,7 +142,7 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
         {done ? '✓' : icon}
       </button>
       {praying && (
-        <PrayerPrompt subject={`${name}’s ${habit.name}`} details={details || undefined}
+        <PrayerPrompt subject={`${name}’s ${habit.name}`} who={name} details={details || undefined}
           onPrayed={async () => { await pray.onPrayed(); setSent(true) }}
           onLater={async (at) => { await pray.onLater(at); setSent(true) }}
           onClose={() => setPraying(false)} />
