@@ -151,6 +151,10 @@ choose **I already use Steadfast** and type it in.
   everyone in it ("Time to pray for Jesse and Jared, like you planned"); there's nothing to
   tick off afterwards. Home lists your prayer moments until an hour after each. Every
   choice counts as praying, so the person sees the 🙏.
+- **A word after praying**: after "I prayed", and on a planned prayer moment (tap it on Home
+  or in the reminder), there's a box for anything you felt, sensed or want to encourage them
+  with. It's sent to them personally (to the group for a group prayer) and shows in the feed
+  tagged "🙏 After praying · 🛡️ Purity (Wed)".
 - **Kudos and praying**: on a member's card and page, each shared answer gets 👏 when it went
   well and 🙏 when it was hard. A small label on the answer ("🙏 2 · 👏 1") counts the people;
   tap it to see who. "🙏 Praying for you" under a member is a prayer in general and shows as a

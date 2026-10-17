@@ -9,12 +9,14 @@ import { joinNames, prayerMoments } from '../lib/prayer'
  * Either way the person sees you're praying. After "I prayed", a short word to keep
  * praying, not just tick a box.
  */
-export default function PrayerPrompt({ subject, who, details, onPrayed, onLater, onClose }: {
+export default function PrayerPrompt({ subject, who, wordTo, details, onPrayed, onLater, onWord, onClose }: {
   subject: string // "Jesse's Purity", "Jesse", "everyone's No Short-form Video"
   who?: string // "Jesse", "the group" (defaults to the subject)
   details?: React.ReactNode // what they shared, to pray into
   onPrayed: () => Promise<void>
   onLater?: (at: Date) => Promise<void> // leave out to only offer "I prayed"
+  onWord?: (message: string) => Promise<void> // after praying: send what you felt / an encouragement
+  wordTo?: string // who receives that word, if not `who` ("the group")
   onClose: () => void
 }) {
   const [mode, setMode] = useState<'choose' | 'later' | 'add'>('choose')
@@ -61,7 +63,7 @@ export default function PrayerPrompt({ subject, who, details, onPrayed, onLater,
           <h2 id="pray-title" className="text-xl font-bold">🙏 Keep on praying unceasingly</h2>
           <blockquote className="italic">“Pray without ceasing.”<footer className="muted mt-1 text-sm not-italic">1 Thessalonians 5:17</footer></blockquote>
           <p>Thank you for praying. Keep listening to the Holy Spirit today: if He brings {who ?? subject} to mind again, pray again.</p>
-          <button className="btn-primary w-full" onClick={onClose}>Amen</button>
+          {onWord ? <PrayerWordBox who={wordTo ?? who ?? subject} onSend={onWord} onDone={onClose} /> : <button className="btn-primary w-full" onClick={onClose}>Amen</button>}
         </div>
       ) : (
       <div className="card w-full max-w-md space-y-4 p-5 shadow-2xl">
@@ -110,6 +112,44 @@ export default function PrayerPrompt({ subject, who, details, onPrayed, onLater,
         )}
       </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * After praying: anything you felt, sensed or want to encourage them with. Sent as a
+ * personal message (to the group for a group prayer), tagged with what you prayed about.
+ * Empty is fine: the button just says Amen.
+ */
+export function PrayerWordBox({ who, onSend, onDone }: { who: string; onSend: (message: string) => Promise<void>; onDone: () => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const group = who === 'the group'
+
+  async function finish() {
+    if (!text.trim()) return onDone()
+    setBusy(true)
+    setError(null)
+    try {
+      await onSend(text.trim())
+      onDone()
+    } catch (e) {
+      setError(errorMessage(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2 text-left">
+      <label htmlFor="prayer-word" className="label">Anything you felt, sensed or want to encourage {who} with? (optional)</label>
+      <textarea id="prayer-word" className="input" rows={3} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)}
+        placeholder="A verse, a picture, a word of encouragement…" />
+      <p className="muted text-xs">{group ? 'The whole group will see this' : `Only ${who} will see this`}, marked as a word from your prayer.</p>
+      <ErrorText error={error} />
+      <button className="btn-primary w-full" disabled={busy} onClick={finish}>
+        {busy ? 'Sending…' : text.trim() ? `✉️ Send to ${who}` : 'Amen'}
+      </button>
     </div>
   )
 }

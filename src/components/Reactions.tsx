@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { errorMessage } from './ErrorText'
 import PrayerPrompt from './PrayerPrompt'
-import { addPrayerReminder, sendEncouragement, type Encouragement, type SharedCheckin, type SharedHabit } from '../lib/groups'
+import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type SharedCheckin, type SharedHabit } from '../lib/groups'
 
 // Kudos (👏) and prayers (🙏) are shown as small labels on the check-in they're about
 // (or next to a person's name for "praying for you" in general), not in the group feed.
@@ -28,6 +28,7 @@ export function generalPrayersFor(social: Social, userId: string): Encouragement
 /**
  * What "I prayed" and "I'll set aside time later" do: both record the prayer (so the
  * person sees someone is praying); "later" also sets a private reminder for you.
+ * onWord sends what you felt or want to encourage them with, tagged with the prayer.
  */
 export function prayActions(social: Social, p: {
   toUser?: string | null; checkinId?: string | null; topic?: string | null
@@ -36,11 +37,16 @@ export function prayActions(social: Social, p: {
   const record = () => sendEncouragement({
     group_id: social.groupId, kind: 'prayer', to_user: p.toUser ?? null, checkin_id: p.checkinId ?? null, topic: p.topic ?? null,
   }).then(() => undefined)
+  const about = { to_user: p.toUser ?? null, checkin_id: p.checkinId ?? null, topic: p.topic ?? null }
   return {
     onPrayed: async () => { await record(); social.onSent() },
     onLater: async (at: Date) => {
-      await addPrayerReminder({ group_id: social.groupId, who: p.who, what: p.what ?? null, link: p.link, remind_at: at.toISOString() })
+      await addPrayerReminder({ group_id: social.groupId, who: p.who, what: p.what ?? null, link: p.link, remind_at: at.toISOString(), ...about })
       await record()
+      social.onSent()
+    },
+    onWord: async (message: string) => {
+      await sendPrayerWord({ group_id: social.groupId, ...about, message })
       social.onSent()
     },
   }
@@ -145,6 +151,7 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
         <PrayerPrompt subject={`${name}’s ${habit.name}`} who={name} details={details || undefined}
           onPrayed={async () => { await pray.onPrayed(); setSent(true) }}
           onLater={async (at) => { await pray.onLater(at); setSent(true) }}
+          onWord={pray.onWord}
           onClose={() => setPraying(false)} />
       )}
     </>

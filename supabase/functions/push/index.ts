@@ -158,8 +158,8 @@ async function prayerReminders(admin: SupabaseClient, vapid: VapidKeys, now: Dat
         title: 'Steadfast 🙏',
         // Names only, never what it's about: it may show on a lock screen.
         body: `Time to pray for ${joinNames(moment.items.map((r) => r.who))}, like you planned`,
-        // One prayer: that person's page. Several: Home, which lists them.
-        url: moment.items.length === 1 ? `#${first.link || '/'}` : '#/',
+        // One prayer: its page (what it's about, and a place to send a word). Several: Home, which lists them.
+        url: moment.items.length === 1 ? `#/pray/${first.id}` : '#/',
         tag: `pray-${userId}-${moment.at}`,
       })
     }
@@ -237,9 +237,11 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
         ? e.to_user ? `${name} is praying for you 🙏` : `${name} prayed for your group 🙏`
         : e.kind === 'kudos'
           ? `${name} gave you kudos 👏`
-          : e.to_user
-            ? `${name} sent you a message`
-            : `${name} posted a message in your group`
+          : e.from_prayer
+            ? e.to_user ? `${name} prayed for you and sent you a word 🙏` : `${name} prayed for the group and shared a word 🙏`
+            : e.to_user
+              ? `${name} sent you a message`
+              : `${name} posted a message in your group`
 
   const now = new Date()
   let sent = 0

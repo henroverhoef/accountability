@@ -39,7 +39,7 @@ export default function Home() {
   const about = (e: RecentEncouragement) => {
     const c = e.checkin_id ? checkins.find((x) => x.id === e.checkin_id) : undefined
     const h = c && habits.find((x) => x.id === c.habit_id)
-    return h ? ` ${e.kind === 'kudos' ? 'for' : 'about'} ${h.icon} ${h.name}` : ''
+    return h ? ` ${e.kind === 'kudos' ? 'for' : 'about'} ${h.icon} ${h.name}` : '' // (a message with a check-in is a word after praying)
   }
 
   return (
@@ -109,7 +109,7 @@ export default function Home() {
                 </span>
                 <span className="flex-1">
                   {m.items.map((r) => (
-                    <Link key={r.id} to={r.link || '/groups'} className="flex items-center gap-2 py-1">
+                    <Link key={r.id} to={`/pray/${r.id}`} className="flex items-center gap-2 py-1">
                       <span className="flex-1"><strong>{r.who === 'the group' ? 'The group' : r.who}</strong>{r.what ? ` · ${r.what}` : ''}</span>
                       <span className="text-slate-400" aria-hidden>›</span>
                     </Link>
@@ -130,11 +130,12 @@ export default function Home() {
                 {/* Prayers and kudos open your own page in that group (they show on your check-ins); the rest open the feed. */}
                 <Link to={e.kind === 'prayer' && !e.to_me ? `/groups/${e.group_id}?tab=overview`
                   : e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block text-sm">
-                  <span aria-hidden>{ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
+                  <span aria-hidden>{e.kind === 'message' && e.checkin_id ? '🙏' : ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
                   <strong>{e.from_name}</strong>{' '}
                   {e.kind === 'prayer' && !e.to_me ? `prayed for ${e.group_name}`
-                    : e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text : e.to_me ? 'sent you a message' : `posted in ${e.group_name}`}
-                  {(e.kind === 'prayer' || e.kind === 'kudos') && about(e)}
+                    : e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text
+                    : e.to_me ? (e.checkin_id ? 'sent you a word after praying' : 'sent you a message') : `posted in ${e.group_name}`}
+                  {(e.kind === 'prayer' || e.kind === 'kudos' || (e.kind === 'message' && e.to_me)) && about(e)}
                   <span className="muted"> · {timeAgo(e.created_at)}</span>
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}
                 </Link>

@@ -12,7 +12,7 @@ import {
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
 import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
-import { describeAnswer, OUTCOME_STYLES } from '../lib/outcomes'
+import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
 
 type Tab = 'members' | 'overview' | 'feed' | 'sharing' | 'invite'
 const TABS: Tab[] = ['members', 'overview', 'feed', 'sharing', 'invite']
@@ -268,6 +268,7 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
         <PrayerPrompt subject={name}
           onPrayed={async () => { await pray.onPrayed(); setStatus(`🙏 ${name} will know you’re praying.`) }}
           onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}
+          onWord={async (m) => { await pray.onWord(m); setStatus(`🙏 ${name} will know you’re praying, and got your word.`) }}
           onClose={() => setPraying(false)} />
       )}
       {writing && (
@@ -324,15 +325,28 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
         {items.map((e) => (
           <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
             <div>
-              <span aria-hidden>{e.kind === 'sos' ? '🆘' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
+              <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.from_prayer ? '🙏' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
               {e.kind === 'sos' ? 'asked for prayer and support' : e.to_user ? `→ ${e.to_user === me ? 'you' : nameOf(e.to_user)}` : ''}
             </div>
+            {e.from_prayer && <PrayerTag o={o} e={e} />}
             {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
             <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+
+/** On a word sent after praying: "🙏 After praying · 🛡️ Purity (Wed, Oct 15)". */
+function PrayerTag({ o, e }: { o: GroupOverview; e: Encouragement }) {
+  const c = e.checkin_id ? o.checkins.find((x) => x.id === e.checkin_id) : undefined
+  const h = c && o.habits.find((x) => x.id === c.habit_id)
+  const about = h ? `${h.icon} ${h.name} (${formatDate(c.date)})` : e.topic ? e.topic : null
+  return (
+    <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+      <span className="truncate">🙏 After praying{about ? ` · ${about}` : ''}</span>
+    </span>
   )
 }
 

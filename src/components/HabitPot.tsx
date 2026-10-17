@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import PrayerPrompt from './PrayerPrompt'
 import { prayActions, ReactionLabel, type Social } from './Reactions'
-import type { GroupOverview } from '../lib/groups'
+import { sendPrayerWord, type GroupOverview } from '../lib/groups'
 import { OUTCOME_STYLES } from '../lib/outcomes'
 import { habitKey, habitPot, potIsHard, type PotCategory } from '../lib/pot'
 
@@ -34,6 +34,12 @@ function Category({ c, social }: { c: PotCategory; social: Social }) {
   const prayers = social.reactions.filter((r) => r.kind === 'prayer' && !r.to_user && r.topic && habitKey(r.topic) === c.key && Date.parse(r.created_at) > weekAgo)
   const subject = c.people.length === 1 ? `${names[0] === 'you' ? 'your' : `${names[0]}’s`} ${c.name}` : `the group’s ${c.name}`
   const pray = prayActions(social, { topic: c.name, who: 'the group', what: c.name, link: `/groups/${social.groupId}?tab=overview` })
+  // A word after praying goes to that person when the habit is just one other person's, else to the group.
+  const only = c.people.length === 1 && c.people[0].user_id !== social.me ? c.people[0] : null
+  const sendWord = async (message: string) => {
+    await sendPrayerWord({ group_id: social.groupId, to_user: only?.user_id ?? null, checkin_id: null, topic: c.name, message })
+    social.onSent()
+  }
 
   const parts: [number, string, string][] = [
     [c.good, OUTCOME_STYLES.good.dot, 'good'],
@@ -77,6 +83,8 @@ function Category({ c, social }: { c: PotCategory; social: Social }) {
           details={<><span className="font-semibold">Shared by {names.join(', ')}.</span>{total > 0 && <span className="block">This week: {summary}</span>}</>}
           onPrayed={async () => { await pray.onPrayed(); setStatus('🙏 The group will see you prayed for this.') }}
           onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}
+          onWord={async (m) => { await sendWord(m); setStatus(only ? `🙏 ${only.name} got your word.` : '🙏 The group will see you prayed for this, and your word is in the feed.') }}
+          wordTo={only ? only.name : 'the group'}
           onClose={() => setPraying(false)} />
       )}
     </li>

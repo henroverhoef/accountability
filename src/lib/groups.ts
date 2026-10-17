@@ -79,6 +79,7 @@ export interface Encouragement {
   kind: 'prayer' | 'message' | 'sos' | 'kudos'
   message: string | null
   topic?: string | null // a prayer for the whole group about one shared habit
+  from_prayer?: boolean // a word sent after praying (tagged with what the prayer was about)
   created_at: string
 }
 
@@ -123,6 +124,7 @@ export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>
 
 export function sendEncouragement(e: {
   group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null; topic?: string | null
+  from_prayer?: boolean
 }) {
   return unwrap(supabase.from('encouragements').insert({ ...e, message: e.message?.trim() || null }))
 }
@@ -155,10 +157,22 @@ export interface PrayerReminder {
   link: string | null
   remind_at: string
   sent_at: string | null
+  // What the prayer is about, so a word sent from the planned moment is tagged the same way.
+  to_user: string | null // null = the whole group
+  checkin_id: string | null
+  topic: string | null
 }
 
-export const addPrayerReminder = (r: { group_id: string; who: string; what: string | null; link: string | null; remind_at: string }) =>
-  unwrap(supabase.from('prayer_reminders').insert(r))
+export const addPrayerReminder = (r: {
+  group_id: string; who: string; what: string | null; link: string | null; remind_at: string
+  to_user: string | null; checkin_id: string | null; topic: string | null
+}) => unwrap(supabase.from('prayer_reminders').insert(r))
+
+export const getPrayerReminder = (id: string) => unwrap<PrayerReminder>(supabase.from('prayer_reminders').select('*').eq('id', id).single())
+
+/** A word after praying: a personal message (the group's, for a group prayer), tagged with what it was about. */
+export const sendPrayerWord = (w: { group_id: string; to_user: string | null; checkin_id: string | null; topic: string | null; message: string }) =>
+  sendEncouragement({ ...w, kind: 'message', from_prayer: true })
 
 /** Times you set aside to pray that are still coming up (or were in the last hour), for Home. */
 export const listUpcomingPrayerReminders = () =>
