@@ -3,8 +3,8 @@ import { errorMessage } from './ErrorText'
 import PrayerPrompt from './PrayerPrompt'
 import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type SharedCheckin, type SharedHabit } from '../lib/groups'
 
-// Kudos (👏) and prayers (🙏) are shown as small labels on the check-in they're about
-// (or next to a person's name for "praying for you" in general), not in the group feed.
+// Kudos (👏) and prayers (🙏) are shown as small labels on what they're about: a check-in,
+// a feed message (reply_to), or next to a person's name for "praying for you" in general.
 
 /** What the reaction pieces need to know about the group. */
 export interface Social {
@@ -19,10 +19,15 @@ export function reactionsFor(social: Social, checkinId: string): Encouragement[]
   return social.reactions.filter((r) => r.checkin_id === checkinId)
 }
 
-/** Prayers for someone "in general" (not about one check-in) in the last week. */
+/** Kudos and prayers on one feed message. */
+export function reactionsForMessage(social: Social, messageId: string): Encouragement[] {
+  return social.reactions.filter((r) => r.reply_to === messageId)
+}
+
+/** Prayers for someone "in general" (not about one check-in or message) in the last week. */
 export function generalPrayersFor(social: Social, userId: string): Encouragement[] {
   const weekAgo = Date.now() - 7 * 86400000
-  return social.reactions.filter((r) => r.kind === 'prayer' && !r.checkin_id && r.to_user === userId && Date.parse(r.created_at) > weekAgo)
+  return social.reactions.filter((r) => r.kind === 'prayer' && !r.checkin_id && !r.reply_to && r.to_user === userId && Date.parse(r.created_at) > weekAgo)
 }
 
 /**
@@ -31,13 +36,11 @@ export function generalPrayersFor(social: Social, userId: string): Encouragement
  * onWord sends what you felt or want to encourage them with, tagged with the prayer.
  */
 export function prayActions(social: Social, p: {
-  toUser?: string | null; checkinId?: string | null; topic?: string | null
+  toUser?: string | null; checkinId?: string | null; topic?: string | null; replyTo?: string | null
   who: string; what?: string | null; link: string // for the reminder
 }) {
-  const record = () => sendEncouragement({
-    group_id: social.groupId, kind: 'prayer', to_user: p.toUser ?? null, checkin_id: p.checkinId ?? null, topic: p.topic ?? null,
-  }).then(() => undefined)
-  const about = { to_user: p.toUser ?? null, checkin_id: p.checkinId ?? null, topic: p.topic ?? null }
+  const about = { to_user: p.toUser ?? null, checkin_id: p.checkinId ?? null, topic: p.topic ?? null, reply_to: p.replyTo ?? null }
+  const record = () => sendEncouragement({ group_id: social.groupId, kind: 'prayer', ...about }).then(() => undefined)
   return {
     onPrayed: async () => { await record(); social.onSent() },
     onLater: async (at: Date) => {
@@ -155,5 +158,61 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
           onClose={() => setPraying(false)} />
       )}
     </>
+  )
+}
+
+/**
+ * Under a feed message: "🙏 2 👏 1" (tap for who) and two small buttons. Kudos is one tap;
+ * praying opens the same pop-up as everywhere else. No kudos on a cry for help (SOS), and
+ * no buttons on your own messages.
+ */
+export function MessageReactions({ e, social }: { e: Encouragement; social: Social }) {
+  const [praying, setPraying] = useState(false)
+  const [sent, setSent] = useState<{ kudos?: boolean; prayer?: boolean }>({})
+  const list = reactionsForMessage(social, e.id)
+  const mine = e.from_user === social.me
+  const author = social.nameOf(e.from_user)
+  const done = (kind: 'kudos' | 'prayer') => sent[kind] || list.some((r) => r.kind === kind && r.from_user === social.me)
+  const snippet = (e.message ?? '').length > 60 ? `${e.message!.slice(0, 60)}…` : e.message ?? ''
+  const pray = prayActions(social, {
+    toUser: e.from_user, replyTo: e.id, who: author, what: e.kind === 'sos' ? 'request for help' : 'message',
+    link: `/groups/${social.groupId}?tab=feed`,
+  })
+
+  async function kudos() {
+    try {
+      await sendEncouragement({ group_id: social.groupId, kind: 'kudos', to_user: e.from_user, reply_to: e.id })
+      setSent((x) => ({ ...x, kudos: true }))
+      social.onSent()
+    } catch (err) {
+      alert(errorMessage(err))
+    }
+  }
+
+  const button = 'h-8 w-8 shrink-0 rounded-full text-sm disabled:opacity-100'
+  const off = 'bg-slate-100 dark:bg-slate-800'
+  const on = 'bg-emerald-100 ring-2 ring-emerald-500 dark:bg-emerald-900/40' // done: you already did
+  return (
+    <span className="flex items-center gap-1.5">
+      <ReactionLabel list={list} social={social} />
+      {!mine && (
+        <>
+          {e.kind !== 'sos' && (
+            <button className={`${button} ${done('kudos') ? on : off}`} disabled={done('kudos')} onClick={kudos}
+              aria-label={done('kudos') ? `Kudos to ${author}: done` : `Give ${author} kudos`}>👏</button>
+          )}
+          <button className={`${button} ${done('prayer') ? on : off}`} disabled={done('prayer')} onClick={() => setPraying(true)}
+            aria-label={done('prayer') ? `Praying for ${author}: done` : `Pray for ${author} about this`}>🙏</button>
+        </>
+      )}
+      {praying && (
+        <PrayerPrompt subject={e.kind === 'sos' ? `${author}, who asked for help` : `${author} and what they shared`} who={author}
+          details={snippet ? <span className="italic">“{snippet}”</span> : undefined}
+          onPrayed={async () => { await pray.onPrayed(); setSent((x) => ({ ...x, prayer: true })) }}
+          onLater={async (at) => { await pray.onLater(at); setSent((x) => ({ ...x, prayer: true })) }}
+          onWord={pray.onWord}
+          onClose={() => setPraying(false)} />
+      )}
+    </span>
   )
 }

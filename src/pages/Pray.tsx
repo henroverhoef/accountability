@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ErrorText from '../components/ErrorText'
 import { PrayerWordBox } from '../components/PrayerPrompt'
 import { useAsync } from '../components/useAsync'
-import { getOverview, getPrayerReminder, sendPrayerWord } from '../lib/groups'
+import { getEncouragement, getOverview, getPrayerReminder, sendPrayerWord } from '../lib/groups'
 import { formatDate } from '../lib/outcomes'
 
 /**
@@ -20,6 +20,11 @@ export default function Pray() {
     const o = await getOverview(r.group_id).catch(() => null)
     const c = o?.checkins.find((x) => x.id === r.checkin_id)
     return c ? { c, habit: o!.habits.find((h) => h.id === c.habit_id) } : null
+  }, [reminder.data])
+  // Or the feed message it's about.
+  const message = useAsync(async () => {
+    const r = reminder.data
+    return r?.reply_to ? getEncouragement(r.reply_to).catch(() => null) : null
   }, [reminder.data])
 
   if (reminder.error) {
@@ -53,8 +58,14 @@ export default function Pray() {
             {c.note && <span className="block whitespace-pre-wrap italic">“{c.note}”</span>}
           </div>
         )}
+        {message.data?.message && (
+          <div className="rounded-lg bg-slate-100 p-3 text-sm dark:bg-slate-800">
+            <span className="font-semibold">What {r.who} wrote:</span>
+            <span className="block whitespace-pre-wrap italic">“{message.data.message}”</span>
+          </div>
+        )}
         <PrayerWordBox who={group ? 'the group' : r.who}
-          onSend={(message) => sendPrayerWord({ group_id: r.group_id!, to_user: r.to_user, checkin_id: r.checkin_id, topic: r.topic, message }).then(() => undefined)}
+          onSend={(message) => sendPrayerWord({ group_id: r.group_id!, to_user: r.to_user, checkin_id: r.checkin_id, topic: r.topic, reply_to: r.reply_to, message }).then(() => undefined)}
           onDone={() => navigate(r.link || '/', { replace: true })} />
         <ErrorText error={shared.error} />
       </section>

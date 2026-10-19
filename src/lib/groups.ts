@@ -80,6 +80,7 @@ export interface Encouragement {
   message: string | null
   topic?: string | null // a prayer for the whole group about one shared habit
   from_prayer?: boolean // a word sent after praying (tagged with what the prayer was about)
+  reply_to?: string | null // a kudos / prayer / word about this feed message
   created_at: string
 }
 
@@ -124,7 +125,7 @@ export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>
 
 export function sendEncouragement(e: {
   group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null; topic?: string | null
-  from_prayer?: boolean
+  from_prayer?: boolean; reply_to?: string | null
 }) {
   return unwrap(supabase.from('encouragements').insert({ ...e, message: e.message?.trim() || null }))
 }
@@ -161,18 +162,23 @@ export interface PrayerReminder {
   to_user: string | null // null = the whole group
   checkin_id: string | null
   topic: string | null
+  reply_to: string | null // a feed message
 }
 
 export const addPrayerReminder = (r: {
   group_id: string; who: string; what: string | null; link: string | null; remind_at: string
-  to_user: string | null; checkin_id: string | null; topic: string | null
+  to_user: string | null; checkin_id: string | null; topic: string | null; reply_to: string | null
 }) => unwrap(supabase.from('prayer_reminders').insert(r))
 
 export const getPrayerReminder = (id: string) => unwrap<PrayerReminder>(supabase.from('prayer_reminders').select('*').eq('id', id).single())
 
 /** A word after praying: a personal message (the group's, for a group prayer), tagged with what it was about. */
-export const sendPrayerWord = (w: { group_id: string; to_user: string | null; checkin_id: string | null; topic: string | null; message: string }) =>
-  sendEncouragement({ ...w, kind: 'message', from_prayer: true })
+export const sendPrayerWord = (w: {
+  group_id: string; to_user: string | null; checkin_id: string | null; topic: string | null; reply_to?: string | null; message: string
+}) => sendEncouragement({ ...w, kind: 'message', from_prayer: true })
+
+/** One message or SOS (if you can see it), e.g. the one a planned prayer is about. */
+export const getEncouragement = (id: string) => unwrap<Encouragement>(supabase.from('encouragements').select('*').eq('id', id).single())
 
 /** Times you set aside to pray that are still coming up (or were in the last hour), for Home. */
 export const listUpcomingPrayerReminders = () =>

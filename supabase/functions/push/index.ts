@@ -258,10 +258,11 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
     sent += await sendToUser(admin, vapid, uid, {
       title: e.kind === 'sos' ? 'Steadfast 🙏' : 'Steadfast',
       body,
-      // Messages and SOS open the group's feed; prayers and kudos open your own page in
-      // the group, where they show on the check-in they're about.
-      // (a prayer for the whole group opens the group's Overview, where it shows on the habit)
-      url: e.kind === 'prayer' && !e.to_user ? `#/groups/${e.group_id}?tab=overview`
+      // Messages and SOS open the group's feed, and so do kudos/prayers on a message
+      // (reply_to); other prayers and kudos open your own page in the group, where they
+      // show on the check-in they're about (a prayer for the whole group: the Overview).
+      url: e.reply_to ? `#/groups/${e.group_id}?tab=feed`
+        : e.kind === 'prayer' && !e.to_user ? `#/groups/${e.group_id}?tab=overview`
         : e.kind === 'prayer' || e.kind === 'kudos' ? `#/groups/${e.group_id}/member/${uid}` : `#/groups/${e.group_id}?tab=feed`,
       tag: e.kind === 'sos' ? `sos-${id}` : 'encouragement',
     })

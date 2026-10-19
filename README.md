@@ -137,7 +137,10 @@ choose **I already use Steadfast** and type it in.
   yesterday, per-habit reminders and a wind-down reminder before a bedtime target.
 - **Group feed**: messages to the group (updates, prayer requests, encouragement) and SOS.
   Check-ins are on each member's page; kudos and prayers show on the check-ins themselves.
-  Tapping a message or SOS notification opens the feed.
+  Each message has two small buttons on its time line: 👏 kudos (one tap) and 🙏 (the same
+  "pray with intention" pop-up as everywhere: pray now, set aside a moment, add to a prayer
+  time, and a word afterwards). A cry for help (SOS) only gets 🙏. Counts show next to them
+  ("🙏 2 · 👏 1", tap for who). Tapping a message, SOS or a reaction to one opens the feed.
 - **Group Overview** (group → Overview): everyone's shared habits in one pot, grouped by
   name (all the "No Short-form Video" habits together), with how the last 7 days went as a
   bar: good / mixed / hard / checked in / missed. A habit where the answers were mostly hard

@@ -6,7 +6,7 @@ import ShareSelect from '../components/ShareSelect'
 import { useAsync } from '../components/useAsync'
 import HabitPot from '../components/HabitPot'
 import PrayerPrompt from '../components/PrayerPrompt'
-import { CheckinReaction, generalPrayersFor, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
+import { CheckinReaction, generalPrayersFor, MessageReactions, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
   getOverview, inviteLink, listEncouragements, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
   type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
@@ -63,7 +63,7 @@ export default function GroupDetail() {
         </ul>
       )}
       {tab === 'overview' && <HabitPot o={o} social={social} />}
-      {tab === 'feed' && <Feed o={o} items={feed.data ?? []} me={me} onChange={refresh} />}
+      {tab === 'feed' && <Feed o={o} items={feed.data ?? []} me={me} social={social} onChange={refresh} />}
       {tab === 'sharing' && <MySharing groupId={id} onChange={overview.reload} />}
       {tab === 'invite' && <Invite o={o} me={me} onChange={overview.reload} />}
     </div>
@@ -289,9 +289,10 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
 
 // ---------- feed --------------------------------------------------------------
 // Messages and SOS. Check-ins are on each member's page, and kudos and prayers show
-// as small 🙏/👏 labels on the check-in they're about, so the messages stay visible.
+// as small 🙏/👏 labels on what they're about (a check-in, or a message here), so the
+// messages stay visible.
 
-function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encouragement[]; me: string; onChange: () => void }) {
+function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Encouragement[]; me: string; social: Social; onChange: () => void }) {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const nameOf = (uid: string | null) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
@@ -328,9 +329,12 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
               <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.from_prayer ? '🙏' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
               {e.kind === 'sos' ? 'asked for prayer and support' : e.to_user ? `→ ${e.to_user === me ? 'you' : nameOf(e.to_user)}` : ''}
             </div>
-            {e.from_prayer && <PrayerTag o={o} e={e} />}
+            {e.from_prayer && <PrayerTag o={o} e={e} items={items} nameOf={nameOf} />}
             {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
-            <time className="muted mt-1 block">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+            <div className="mt-1 flex min-h-8 items-center gap-2">
+              <time className="muted flex-1">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+              <MessageReactions e={e} social={social} />
+            </div>
           </li>
         ))}
       </ul>
@@ -338,11 +342,16 @@ function Feed({ o, items, me, onChange }: { o: GroupOverview; items: Encourageme
   )
 }
 
-/** On a word sent after praying: "🙏 After praying · 🛡️ Purity (Wed, Oct 15)". */
-function PrayerTag({ o, e }: { o: GroupOverview; e: Encouragement }) {
+/** On a word sent after praying: "🙏 After praying · 🛡️ Purity (Wed, Oct 15)" or "· about “Pray for my exam…”". */
+function PrayerTag({ o, e, items, nameOf }: { o: GroupOverview; e: Encouragement; items: Encouragement[]; nameOf: (uid: string | null) => string }) {
   const c = e.checkin_id ? o.checkins.find((x) => x.id === e.checkin_id) : undefined
   const h = c && o.habits.find((x) => x.id === c.habit_id)
-  const about = h ? `${h.icon} ${h.name} (${formatDate(c.date)})` : e.topic ? e.topic : null
+  const msg = e.reply_to ? items.find((x) => x.id === e.reply_to) : undefined
+  const quote = msg?.message ? `“${msg.message.length > 30 ? `${msg.message.slice(0, 30)}…` : msg.message}”` : null
+  const about = h ? `${h.icon} ${h.name} (${formatDate(c.date)})`
+    : e.topic ? e.topic
+    : msg ? (msg.kind === 'sos' ? `${nameOf(msg.from_user)}’s request for help` : `about ${quote ?? `${nameOf(msg.from_user)}’s message`}`)
+    : e.reply_to ? 'about a message' : null
   return (
     <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
       <span className="truncate">🙏 After praying{about ? ` · ${about}` : ''}</span>
