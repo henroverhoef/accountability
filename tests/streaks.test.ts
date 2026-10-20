@@ -7,12 +7,12 @@ const c = (date: string, outcome: CheckinLike['outcome'], habit_id = 'p'): Check
 describe('habitStreak', () => {
   it('counts consecutive clean days, with Struggled counting as clean', () => {
     const list = [c('2026-09-01', 'good'), c('2026-09-02', 'mid'), c('2026-09-03', 'good')]
-    expect(habitStreak(daily, list, '2026-09-03')).toEqual({ current: 3, longest: 3 })
+    expect(habitStreak(daily, list, '2026-09-03')).toMatchObject({ current: 3, longest: 3 })
   })
 
   it('a slip resets the current streak but keeps the longest', () => {
     const list = [c('2026-09-01', 'good'), c('2026-09-02', 'good'), c('2026-09-03', 'bad'), c('2026-09-04', 'good')]
-    expect(habitStreak(daily, list, '2026-09-04')).toEqual({ current: 1, longest: 2 })
+    expect(habitStreak(daily, list, '2026-09-04')).toMatchObject({ current: 1, longest: 2 })
   })
 
   it('today without a check-in is pending, not a break', () => {
@@ -22,7 +22,7 @@ describe('habitStreak', () => {
 
   it('a missed (unanswered) past day breaks the streak', () => {
     const list = [c('2026-09-01', 'good'), c('2026-09-03', 'good')]
-    expect(habitStreak(daily, list, '2026-09-03')).toEqual({ current: 1, longest: 1 })
+    expect(habitStreak(daily, list, '2026-09-03')).toMatchObject({ current: 1, longest: 1 })
   })
 
   it('ignores days the habit is not scheduled', () => {
@@ -35,6 +35,54 @@ describe('habitStreak', () => {
   it('counts back-filled check-ins before the start date', () => {
     const h = { ...daily, start_date: '2026-09-02' }
     expect(habitStreak(h, [c('2026-09-01', 'good'), c('2026-09-02', 'good')], '2026-09-02').current).toBe(2)
+  })
+})
+
+describe('habitStreak: ❤️‍🔥 green streak', () => {
+  // Day n of September (day 1 = 2026-09-01).
+  const day = (n: number) => `2026-09-${String(n).padStart(2, '0')}`
+  const days = (from: number, to: number, outcome: CheckinLike['outcome']) =>
+    Array.from({ length: to - from + 1 }, (_, i) => c(day(from + i), outcome))
+
+  it('all green: ❤️‍🔥 and 🔥 are the same', () => {
+    expect(habitStreak(daily, days(1, 5, 'good'), day(5))).toMatchObject({ current: 5, green: 5, longestGreen: 5, greenBackIn: 0 })
+  })
+
+  it('a yellow day resets ❤️‍🔥 but 🔥 carries on', () => {
+    const list = [...days(1, 5, 'good'), c(day(6), 'mid')]
+    expect(habitStreak(daily, list, day(6))).toMatchObject({ current: 6, green: 0, longestGreen: 5, greenBackIn: 7 })
+  })
+
+  it('❤️‍🔥 comes back once the new green run is more than half of 🔥', () => {
+    // Green 1–5, yellow on 6, green from 7: on day 12 it's 6 of 12 (not more than half)…
+    const list = [...days(1, 5, 'good'), c(day(6), 'mid'), ...days(7, 20, 'good')]
+    expect(habitStreak(daily, list, day(12))).toMatchObject({ current: 12, green: 0, greenBackIn: 1 })
+    // …and on day 13 it's 7 of 13.
+    expect(habitStreak(daily, list, day(13))).toMatchObject({ current: 13, green: 7, greenBackIn: 0 })
+    expect(habitStreak(daily, list, day(20))).toMatchObject({ current: 20, green: 14, longestGreen: 14 })
+  })
+
+  it('counts down to the comeback', () => {
+    const list = [...days(1, 5, 'good'), c(day(6), 'mid'), ...days(7, 9, 'good')]
+    expect(habitStreak(daily, list, day(9)).greenBackIn).toBe(4) // back on day 13
+  })
+
+  it('today not checked in yet changes nothing', () => {
+    const list = [...days(1, 5, 'good'), c(day(6), 'mid'), ...days(7, 13, 'good')]
+    expect(habitStreak(daily, list, day(14))).toMatchObject({ current: 13, green: 7 })
+  })
+
+  it('a red day resets both, and the next green day starts both again', () => {
+    const list = [...days(1, 5, 'good'), c(day(6), 'mid'), c(day(7), 'bad'), c(day(8), 'good')]
+    expect(habitStreak(daily, list, day(7))).toMatchObject({ current: 0, green: 0 })
+    expect(habitStreak(daily, list, day(8))).toMatchObject({ current: 1, green: 1, longestGreen: 5 })
+  })
+
+  it('a yellow first day: 🔥 1, no ❤️‍🔥 until there are more greens than yellows', () => {
+    const list = [c(day(1), 'mid'), ...days(2, 3, 'good')]
+    expect(habitStreak(daily, list, day(1))).toMatchObject({ current: 1, green: 0, greenBackIn: 2 })
+    expect(habitStreak(daily, list, day(2))).toMatchObject({ current: 2, green: 0, greenBackIn: 1 })
+    expect(habitStreak(daily, list, day(3))).toMatchObject({ current: 3, green: 2 })
   })
 })
 

@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import ErrorText from '../components/ErrorText'
 import Heatmap from '../components/Heatmap'
+import StreakBadge from '../components/StreakBadge'
 import { useAsync } from '../components/useAsync'
 import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import { getOverview, listReactions, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
@@ -100,7 +101,7 @@ function HabitCard({ habit, checkins, today, reactAs, social }: {
 
       {(streak || avg) && (
         <div className="flex gap-4 text-sm">
-          {streak && <span>🔥 <strong>{streak.current}</strong> {habit.type === 'avoid' ? 'clean days' : 'in a row'} (best {streak.longest})</span>}
+          {streak && <span><StreakBadge streak={streak} /> <span className="muted">(best {streak.longest})</span></span>}
           {avg && <span>Avg (30 days): <strong>{avg}</strong>/10</span>}
         </div>
       )}

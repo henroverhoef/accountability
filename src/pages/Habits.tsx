@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
-import { habitStreak } from '../lib/logic'
+import StreakBadge from '../components/StreakBadge'
+import { habitStreak, type HabitStreak } from '../lib/logic'
 import { TYPE_NAMES } from '../lib/outcomes'
 import type { Habit } from '../lib/types'
 
@@ -19,7 +20,7 @@ export default function Habits() {
 
       {activeHabits.length === 0 && <p className="card">No habits yet. Tap “Add” to choose one.</p>}
       <ul className="space-y-2">
-        {activeHabits.map((h) => <HabitRow key={h.id} habit={h} streak={habitStreak(h, checkins, today).current} />)}
+        {activeHabits.map((h) => <HabitRow key={h.id} habit={h} streak={habitStreak(h, checkins, today)} />)}
       </ul>
 
       {archived.length > 0 && (
@@ -38,7 +39,7 @@ export default function Habits() {
   )
 }
 
-function HabitRow({ habit, streak }: { habit: Habit; streak?: number }) {
+function HabitRow({ habit, streak }: { habit: Habit; streak?: HabitStreak }) {
   return (
     <li>
       <Link to={`/habits/${habit.id}`} className="card flex min-h-16 items-center gap-3">
@@ -47,7 +48,7 @@ function HabitRow({ habit, streak }: { habit: Habit; streak?: number }) {
           <span className="block font-semibold">{habit.name}</span>
           <span className="muted block">{TYPE_NAMES[habit.type]}</span>
         </span>
-        {streak !== undefined && <span className="font-bold">🔥 {streak}</span>}
+        {streak && <StreakBadge streak={streak} className="font-bold" />}
       </Link>
     </li>
   )

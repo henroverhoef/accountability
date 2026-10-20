@@ -104,6 +104,12 @@ choose **I already use Steadfast** and type it in.
 - **Score out of 10** habits (e.g. Thankfulness: "How thankful was I today?"): answer with
   a slider. 7–10 counts as a strong day (green), 4–6 mixed (amber), 1–3 hard (red);
   habit pages and the weekly review show the average.
+- **Two streaks per habit**: 🔥 counts green or yellow days in a row (a red or missed day
+  resets it); ❤️‍🔥 counts green days in a row. A yellow day resets ❤️‍🔥 while 🔥 carries on,
+  and ❤️‍🔥 only shows again once the new green run is more than half of the 🔥 streak
+  (green 5 days, yellow on day 6, green from day 7: ❤️‍🔥 is back on day 13 at 7). The habit
+  page counts down ("back after 4 more green days"). Habits with only green or red (bedtime,
+  amounts) just show ❤️‍🔥. The group sees the same streaks for habits shared with their result.
 - **Member details**: in a group, tap someone's name to see their shared habits, a
   6-week calendar, and the last two weeks of check-ins with tags and notes (only what
   they share with that group).

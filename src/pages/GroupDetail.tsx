@@ -6,6 +6,7 @@ import ShareSelect from '../components/ShareSelect'
 import { useAsync } from '../components/useAsync'
 import HabitPot from '../components/HabitPot'
 import PrayerPrompt from '../components/PrayerPrompt'
+import StreakBadge from '../components/StreakBadge'
 import { CheckinReaction, generalPrayersFor, MessageReactions, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
   getOverview, inviteLink, listEncouragements, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
@@ -190,7 +191,7 @@ export function SharedHabitRow({ habit, checkins, today, social, reactAs }: {
   const latest = mine.find((c) => c.date === today) ?? mine.find((c) => c.date === addDays(today, -1))
   const showResult = habit.visibility !== 'checkin'
   const streak = showResult
-    ? habitStreak({ ...habit, archived: false }, mine.filter((c) => c.outcome).map((c) => c as CheckinLike), today).current
+    ? habitStreak({ ...habit, archived: false }, mine.filter((c) => c.outcome).map((c) => c as CheckinLike), today)
     : null
   const lastNight = latest && latest.date !== today
   const label = latest && <ReactionLabel list={reactionsFor(social, latest.id)} social={social} />
@@ -209,7 +210,7 @@ export function SharedHabitRow({ habit, checkins, today, social, reactAs }: {
           )}
         </span>
       ) : <span className="muted">not yet</span>}
-      {streak !== null && <span className="w-12 text-right font-semibold">🔥{streak}</span>}
+      {streak && <StreakBadge streak={streak} compact className="min-w-12 justify-end" />}
       {reactAs && (
         <span className="w-10 text-right">
           {latest && <CheckinReaction checkin={latest} habit={habit} name={reactAs} social={social} />}

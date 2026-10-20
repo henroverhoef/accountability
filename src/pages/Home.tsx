@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import { dayProgress, habitStreak, honestyStreak, supportReason, weekKey } from '../lib/logic'
-import { formatDate } from '../lib/outcomes'
+import { formatDate, hasMidOutcome } from '../lib/outcomes'
 import { useAsync } from '../components/useAsync'
 import { listMyGroups, listUpcomingPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
+import StreakBadge, { StreakLegend } from '../components/StreakBadge'
 import { prayerMoments } from '../lib/prayer'
 
 function timeAgo(iso: string): string {
@@ -147,7 +148,8 @@ export default function Home() {
 
       {activeHabits.length > 0 && (
         <section className="card">
-          <h2 className="h2 mb-2">Streaks</h2>
+          <h2 className="h2">Streaks</h2>
+          {activeHabits.some((h) => hasMidOutcome(h.type)) && <StreakLegend className="mb-2" />}
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
             {activeHabits.map((h) => {
               const s = habitStreak(h, checkins, today)
@@ -156,10 +158,7 @@ export default function Home() {
                   <Link to={`/habits/${h.id}`} className="flex min-h-12 items-center gap-3 py-2">
                     <span className="text-2xl" aria-hidden>{h.icon}</span>
                     <span className="flex-1 font-medium">{h.name}</span>
-                    <span className="text-right">
-                      <span className="font-bold">{s.current}</span>{' '}
-                      <span className="muted">{h.type === 'avoid' ? 'clean days' : 'in a row'}</span>
-                    </span>
+                    <StreakBadge streak={s} />
                   </Link>
                 </li>
               )

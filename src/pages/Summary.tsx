@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useData } from '../data/DataProvider'
 import { addDays, habitStreak, honestyStreak, weekStart, weeklySummary, type Outcome } from '../lib/logic'
 import { averageScore, formatDate, hasMidOutcome, outcomeLabel, OUTCOME_STYLES } from '../lib/outcomes'
+import StreakBadge from '../components/StreakBadge'
 
 /** Personal weekly review. No comparing with anyone: just your own progress. */
 export default function Summary() {
@@ -47,7 +48,7 @@ export default function Summary() {
             <div className="mb-2 flex items-center gap-2">
               <span className="text-2xl" aria-hidden>{h.icon}</span>
               <h2 className="h2 flex-1">{h.name}</h2>
-              <span className="text-sm font-semibold">🔥 {habitStreak(h, checkins, today).current}</span>
+              <StreakBadge streak={habitStreak(h, checkins, today)} className="text-sm" />
             </div>
             {avg && <p className="mb-2 text-sm">Average this week: <strong className="text-lg">{avg}</strong> / 10</p>}
             <ul className="space-y-1 text-sm">
