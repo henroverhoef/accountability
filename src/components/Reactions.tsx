@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { errorMessage } from './ErrorText'
 import PrayerPrompt from './PrayerPrompt'
-import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type SharedCheckin, type SharedHabit } from '../lib/groups'
+import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type FollowUp, type SharedCheckin, type SharedHabit } from '../lib/groups'
 
 // Kudos (👏) and prayers (🙏) are shown as small labels on what they're about: a check-in,
 // a feed message (reply_to), or next to a person's name for "praying for you" in general.
@@ -11,6 +11,7 @@ export interface Social {
   groupId: string
   me: string
   reactions: Encouragement[] // kudos and prayers in this group, newest first
+  followUps: FollowUp[] // calls and coffees this week (never the ones about me)
   nameOf: (uid: string) => string
   onSent: () => void
 }

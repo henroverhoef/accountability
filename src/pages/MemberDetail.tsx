@@ -3,9 +3,10 @@ import { useData } from '../data/DataProvider'
 import ErrorText from '../components/ErrorText'
 import Heatmap from '../components/Heatmap'
 import StreakBadge from '../components/StreakBadge'
+import FollowUps from '../components/FollowUps'
 import { useAsync } from '../components/useAsync'
 import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
-import { getOverview, listReactions, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
+import { getOverview, listFollowUps, listReactions, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
 import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
 import { averageScore, formatDate } from '../lib/outcomes'
 import { AnswerBadge, caughtUpLater, daysSinceCheckin, EncourageButtons, makeSocial, memberSupportReason, SupportPrompt } from './GroupDetail'
@@ -21,6 +22,7 @@ export default function MemberDetail() {
   const me = session!.user.id
   const overview = useAsync(() => getOverview(id), [id])
   const reactions = useAsync(() => listReactions(id), [id])
+  const followUps = useAsync(() => listFollowUps(id), [id])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
@@ -33,8 +35,8 @@ export default function MemberDetail() {
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
   const quietDays = daysSinceCheckin(m)
   const support = isMe ? null : memberSupportReason(o, m)
-  const refresh = () => { overview.reload(); reactions.reload() }
-  const social = makeSocial(o, me, reactions.data ?? [], refresh)
+  const refresh = () => { overview.reload(); reactions.reload(); followUps.reload() }
+  const social = makeSocial(o, me, reactions.data ?? [], refresh, followUps.data ?? [])
 
   return (
     <div className="page space-y-4">
@@ -55,6 +57,7 @@ export default function MemberDetail() {
             No check-in for {quietDays} days. A short message or a prayer can mean a lot.
           </p>
         )}
+        {!isMe && (support || quietDays >= 3) && <FollowUps social={social} about={m.user_id} name={name} />}
       </header>
 
       {!isMe && <EncourageButtons social={social} toUser={m.user_id} name={name} />}

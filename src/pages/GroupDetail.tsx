@@ -7,10 +7,11 @@ import { useAsync } from '../components/useAsync'
 import HabitPot from '../components/HabitPot'
 import PrayerPrompt from '../components/PrayerPrompt'
 import StreakBadge from '../components/StreakBadge'
+import FollowUps from '../components/FollowUps'
 import { CheckinReaction, generalPrayersFor, MessageReactions, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
-  getOverview, inviteLink, listEncouragements, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
-  type Encouragement, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
+  getOverview, inviteLink, listEncouragements, listFollowUps, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
+  type Encouragement, type FollowUp, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
 import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
 import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
@@ -25,6 +26,7 @@ export default function GroupDetail() {
   const overview = useAsync(() => getOverview(id), [id])
   const feed = useAsync(() => listEncouragements(id), [id])
   const reactions = useAsync(() => listReactions(id), [id])
+  const followUps = useAsync(() => listFollowUps(id), [id])
   // The tab lives in the address (#/groups/…?tab=feed), so notifications can open the feed.
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'members'
@@ -32,17 +34,17 @@ export default function GroupDetail() {
 
   // Coming back to the app (e.g. from a notification): show what's new.
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload(); reactions.reload() } }
+    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload(); reactions.reload(); followUps.reload() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [overview.reload, feed.reload, reactions.reload])
+  }, [overview.reload, feed.reload, reactions.reload, followUps.reload])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /><Link to="/groups" className="btn-secondary mt-4">Back</Link></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
   const o = overview.data
 
-  const refresh = () => { overview.reload(); feed.reload(); reactions.reload() }
-  const social = makeSocial(o, me, reactions.data ?? [], refresh)
+  const refresh = () => { overview.reload(); feed.reload(); reactions.reload(); followUps.reload() }
+  const social = makeSocial(o, me, reactions.data ?? [], refresh, followUps.data ?? [])
 
   return (
     <div className="page space-y-4">
@@ -92,9 +94,9 @@ function GroupHeader({ o, onRenamed }: { o: GroupOverview; onRenamed: () => void
 
 // ---------- members ---------------------------------------------------------
 
-export function makeSocial(o: GroupOverview, me: string, reactions: Encouragement[], onSent: () => void): Social {
+export function makeSocial(o: GroupOverview, me: string, reactions: Encouragement[], onSent: () => void, followUps: FollowUp[] = []): Social {
   const nameOf = (uid: string) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
-  return { groupId: o.group.id, me, reactions, nameOf, onSent }
+  return { groupId: o.group.id, me, reactions, followUps, nameOf, onSent }
 }
 
 export function daysSinceCheckin(m: GroupMember): number {
@@ -160,6 +162,7 @@ function MemberCard({ o, member: m, social }: { o: GroupOverview; member: GroupM
           No check-in for {quietDays} days. Maybe reach out?
         </p>
       )}
+      {needsLove && <FollowUps social={social} about={m.user_id} name={name} />}
 
       {habits.length > 0 && (
         <ul className="space-y-1">

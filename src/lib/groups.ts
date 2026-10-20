@@ -121,6 +121,33 @@ export const listReactions = (groupId: string) =>
   unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos'])
     .gte('created_at', new Date(Date.now() - 45 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(1000))
 
+// ---------- "I've called / had coffee with them" ----------------------------------
+// When someone could use support, the group notes who followed up. The database never
+// sends these to the person they're about.
+
+export type FollowUpKind = 'call' | 'coffee'
+
+export interface FollowUp {
+  id: string
+  group_id: string
+  about_user: string
+  from_user: string
+  kind: FollowUpKind
+  created_at: string
+}
+
+/** Days a call or coffee counts as "followed up" (a new week, a new nudge). */
+export const FOLLOW_UP_DAYS = 7
+
+export const listFollowUps = (groupId: string) =>
+  unwrap<FollowUp[]>(supabase.from('support_followups').select('*').eq('group_id', groupId)
+    .gte('created_at', new Date(Date.now() - FOLLOW_UP_DAYS * 86400000).toISOString()).order('created_at'))
+
+export const addFollowUp = (groupId: string, aboutUser: string, kind: FollowUpKind) =>
+  unwrap(supabase.from('support_followups').insert({ group_id: groupId, about_user: aboutUser, kind }))
+
+export const removeFollowUp = (id: string) => unwrap(supabase.from('support_followups').delete().eq('id', id))
+
 export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>(supabase.rpc('recent_for_me', { p_limit: limit }))
 
 export function sendEncouragement(e: {
