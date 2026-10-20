@@ -45,12 +45,12 @@ describe('habitStreak: ❤️‍🔥 green streak', () => {
     Array.from({ length: to - from + 1 }, (_, i) => c(day(from + i), outcome))
 
   it('all green: ❤️‍🔥 and 🔥 are the same', () => {
-    expect(habitStreak(daily, days(1, 5, 'good'), day(5))).toMatchObject({ current: 5, green: 5, longestGreen: 5, greenBackIn: 0 })
+    expect(habitStreak(daily, days(1, 5, 'good'), day(5))).toMatchObject({ current: 5, green: 5, greenBackIn: 0 })
   })
 
   it('a yellow day resets ❤️‍🔥 but 🔥 carries on', () => {
     const list = [...days(1, 5, 'good'), c(day(6), 'mid')]
-    expect(habitStreak(daily, list, day(6))).toMatchObject({ current: 6, green: 0, longestGreen: 5, greenBackIn: 7 })
+    expect(habitStreak(daily, list, day(6))).toMatchObject({ current: 6, green: 0, greenBackIn: 7 })
   })
 
   it('❤️‍🔥 comes back once the new green run is more than half of 🔥', () => {
@@ -59,7 +59,7 @@ describe('habitStreak: ❤️‍🔥 green streak', () => {
     expect(habitStreak(daily, list, day(12))).toMatchObject({ current: 12, green: 0, greenBackIn: 1 })
     // …and on day 13 it's 7 of 13.
     expect(habitStreak(daily, list, day(13))).toMatchObject({ current: 13, green: 7, greenBackIn: 0 })
-    expect(habitStreak(daily, list, day(20))).toMatchObject({ current: 20, green: 14, longestGreen: 14 })
+    expect(habitStreak(daily, list, day(20))).toMatchObject({ current: 20, green: 14 })
   })
 
   it('counts down to the comeback', () => {
@@ -75,7 +75,7 @@ describe('habitStreak: ❤️‍🔥 green streak', () => {
   it('a red day resets both, and the next green day starts both again', () => {
     const list = [...days(1, 5, 'good'), c(day(6), 'mid'), c(day(7), 'bad'), c(day(8), 'good')]
     expect(habitStreak(daily, list, day(7))).toMatchObject({ current: 0, green: 0 })
-    expect(habitStreak(daily, list, day(8))).toMatchObject({ current: 1, green: 1, longestGreen: 5 })
+    expect(habitStreak(daily, list, day(8))).toMatchObject({ current: 1, green: 1 })
   })
 
   it('a yellow first day: 🔥 1, no ❤️‍🔥 until there are more greens than yellows', () => {

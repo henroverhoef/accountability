@@ -101,7 +101,7 @@ function HabitCard({ habit, checkins, today, reactAs, social }: {
 
       {(streak || avg) && (
         <div className="flex gap-4 text-sm">
-          {streak && <span><StreakBadge streak={streak} /> <span className="muted">(best {streak.longest})</span></span>}
+          {streak && <StreakBadge streak={streak} />}
           {avg && <span>Avg (30 days): <strong>{avg}</strong>/10</span>}
         </div>
       )}

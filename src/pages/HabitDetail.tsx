@@ -6,7 +6,7 @@ import { useAsync } from '../components/useAsync'
 import { listMyGroups, listMyShares, setShare, type Visibility } from '../lib/groups'
 import { useData } from '../data/DataProvider'
 import Heatmap from '../components/Heatmap'
-import { StreakLegend } from '../components/StreakBadge'
+import { StreakLegend, streakShown } from '../components/StreakBadge'
 import { addDays, habitStreak, type Outcome } from '../lib/logic'
 import { averageScore, describeAnswer, formatDate, hasMidOutcome, outcomeLabel, OUTCOME_STYLES, shortTime, TYPE_NAMES, WEEKDAYS } from '../lib/outcomes'
 
@@ -18,6 +18,7 @@ export default function HabitDetail() {
 
   const mine = checkins.filter((c) => c.habit_id === habit.id)
   const streak = habitStreak(habit, mine, today)
+  const shown = streakShown(streak)
   const last30 = mine.filter((c) => c.date > addDays(today, -30))
   const counts = (['good', 'mid', 'bad'] as Outcome[]).map((o) => ({ o, n: last30.filter((c) => c.outcome === o).length }))
   const notes = [...mine].filter((c) => c.note || c.tags.length).reverse().slice(0, 10)
@@ -40,40 +41,14 @@ export default function HabitDetail() {
         <Link to={`/habits/${habit.id}/edit`} className="btn-secondary">Edit</Link>
       </header>
 
-      {hasMidOutcome(habit.type) ? (
-        // Green, yellow and red answers: ❤️‍🔥 all green, 🔥 green or yellow.
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="card text-center">
-              <div className="text-3xl font-bold">❤️‍🔥 {streak.green}</div>
-              <div className="muted">green days in a row</div>
-              <div className="muted text-sm">
-                {streak.green === 0 && streak.current > 0
-                  ? `back after ${streak.greenBackIn} more green day${streak.greenBackIn === 1 ? '' : 's'}`
-                  : `best ${streak.longestGreen}`}
-              </div>
-            </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold">🔥 {streak.current}</div>
-              <div className="muted">{habit.type === 'avoid' ? 'clean days now' : 'current streak'}</div>
-              <div className="muted text-sm">best {streak.longest}</div>
-            </div>
-          </div>
-          <StreakLegend />
-        </div>
-      ) : (
-        // Only green or red: both streaks are the same.
-        <div className="grid grid-cols-2 gap-3">
-          <div className="card text-center">
-            <div className="text-3xl font-bold">❤️‍🔥 {streak.green}</div>
-            <div className="muted">current streak</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-3xl font-bold">{streak.longest}</div>
-            <div className="muted">longest streak</div>
-          </div>
-        </div>
-      )}
+      <div className="card text-center">
+        <div className="text-3xl font-bold">{shown.icon} {shown.days}</div>
+        <div className="muted">{streak.green > 0 ? 'green days in a row' : habit.type === 'avoid' ? 'clean days in a row' : 'days in a row'}</div>
+        {streak.green === 0 && streak.current > 0 && (
+          <div className="muted text-sm">❤️‍🔥 back after {streak.greenBackIn} more green day{streak.greenBackIn === 1 ? '' : 's'}</div>
+        )}
+        {hasMidOutcome(habit.type) && <StreakLegend className="mt-2" />}
+      </div>
 
       <section className="card">
         <h2 className="h2 mb-3">Last 90 days</h2>

@@ -210,7 +210,7 @@ export function SharedHabitRow({ habit, checkins, today, social, reactAs }: {
           )}
         </span>
       ) : <span className="muted">not yet</span>}
-      {streak && <StreakBadge streak={streak} compact className="min-w-12 justify-end" />}
+      {streak && <StreakBadge streak={streak} className="min-w-12 text-right" />}
       {reactAs && (
         <span className="w-10 text-right">
           {latest && <CheckinReaction checkin={latest} habit={habit} name={reactAs} social={social} />}

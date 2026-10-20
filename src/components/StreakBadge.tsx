@@ -1,21 +1,23 @@
 import type { HabitStreak } from '../lib/logic'
 
 /**
- * "❤️‍🔥 7 🔥 13": green days in a row, and green-or-yellow days in a row.
- * All green so far: just ❤️‍🔥 (both would be the same number). ❤️‍🔥 hidden after a
- * yellow day: just 🔥. `compact` (tight rows) shows only the first of the two.
+ * One streak at a time: "❤️‍🔥 7" (green days in a row) while it shows, otherwise
+ * "🔥 13" (green or yellow days in a row).
  */
-export default function StreakBadge({ streak, compact = false, className = '' }: { streak: HabitStreak; compact?: boolean; className?: string }) {
-  const { current, green } = streak
-  const label = green > 0
-    ? `${green} green day${green === 1 ? '' : 's'} in a row${green < current ? `, ${current} days in a row` : ''}`
-    : `${current} day${current === 1 ? '' : 's'} in a row`
+export default function StreakBadge({ streak, className = '' }: { streak: HabitStreak; className?: string }) {
+  const s = streakShown(streak)
   return (
-    <span className={`inline-flex items-center gap-2 whitespace-nowrap font-semibold ${className}`} role="img" aria-label={label} title={label}>
-      {green > 0 && <span>❤️‍🔥 {green}</span>}
-      {(green === 0 || (green < current && !compact)) && <span>🔥 {current}</span>}
-    </span>
+    <span className={`whitespace-nowrap font-semibold ${className}`} role="img" aria-label={s.label} title={s.label}>{s.icon} {s.days}</span>
   )
+}
+
+export function streakShown({ current, green }: HabitStreak) {
+  const days = green > 0 ? green : current
+  return {
+    icon: green > 0 ? '❤️‍🔥' : '🔥',
+    days,
+    label: `${days} ${green > 0 ? 'green ' : ''}day${days === 1 ? '' : 's'} in a row`,
+  }
 }
 
 /** One line explaining the two emoji. */

@@ -23,7 +23,6 @@ function earliest(dates: string[]): string | undefined {
  */
 export interface HabitStreak extends Streak {
   green: number
-  longestGreen: number
   greenBackIn: number // while ❤️‍🔥 doesn't show: how many more green days until it does
 }
 
@@ -39,7 +38,6 @@ export function habitStreak(habit: HabitRules, checkins: CheckinLike[], today: s
   let longest = 0
   let run = 0
   let greenRun = 0 // green days in a row since the last yellow
-  let longestGreen = 0
   for (let d = start; d <= today; d = addDays(d, 1)) {
     if (!isDue(rules, d)) continue
     const outcome = byDate.get(d)
@@ -47,7 +45,6 @@ export function habitStreak(habit: HabitRules, checkins: CheckinLike[], today: s
       run++
       longest = Math.max(longest, run)
       greenRun = outcome === 'good' ? greenRun + 1 : 0
-      if (shows(greenRun, run)) longestGreen = Math.max(longestGreen, greenRun)
     } else if (outcome === undefined && d === today) {
       // pending – doesn't break anything
     } else {
@@ -59,7 +56,6 @@ export function habitStreak(habit: HabitRules, checkins: CheckinLike[], today: s
     current: run,
     longest,
     green: shows(greenRun, run) ? greenRun : 0,
-    longestGreen,
     greenBackIn: shows(greenRun, run) ? 0 : run - 2 * greenRun + 1, // smallest k with greenRun + k > (run + k) / 2
   }
 }
