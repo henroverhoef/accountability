@@ -178,8 +178,9 @@ choose **I already use Steadfast** and type it in.
 - **Following up**: while a member has that note (a hard stretch, or no check-in for 3+ days),
   the others get **📞 I've called …** and **☕ I've had coffee with …** buttons and see who has
   (e.g. "☕ Jared had coffee with Jesse · yesterday", or "Nobody has … this week yet"). Several
-  people can each add one; tap yours again to undo. They count for a week and disappear with
-  the note once things look better. The person never sees them (`support_followups` RLS).
+  people can each add theirs. Your button stays ticked for the rest of the day (tap it again to
+  undo) and can be pressed again after midnight; earlier ones stay in the list for a week. All
+  of it disappears with the note once things look better. The person never sees them (`support_followups` RLS).
 - **Groups**: the creator is admin (rename, new invite code, remove members). Sharing
   is per habit, per group: Private · Check-in only · Result · Result + notes (default:
   joining a group or adding a habit shares it as Result + notes; change it any time).

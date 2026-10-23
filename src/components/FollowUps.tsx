@@ -11,16 +11,18 @@ const KINDS: { kind: FollowUpKind; icon: string; button: (name: string) => strin
 
 /**
  * When someone could use support: who in the group has called or had coffee with them
- * this week, and buttons to add yours (tap again to undo). Several people can each add
- * one. The person never sees this (the database doesn't send it to them), and it goes
- * away with the support note once things look better.
+ * this week, and buttons to add yours. A button stays ticked for the rest of the day
+ * (tap it again to undo) and can be pressed again after midnight; earlier ones stay in
+ * the list. Several people can each add theirs. The person never sees this (the database
+ * doesn't send it to them), and it goes away with the support note once things look better.
  */
 export default function FollowUps({ social, about, name }: { social: Social; about: string; name: string }) {
   const [busy, setBusy] = useState(false)
   const list = social.followUps.filter((f) => f.about_user === about)
+  const mineToday = (kind: FollowUpKind) => list.find((f) => f.kind === kind && f.from_user === social.me && daysAgo(f.created_at) <= 0)
 
   async function toggle(kind: FollowUpKind) {
-    const mine = list.find((f) => f.kind === kind && f.from_user === social.me)
+    const mine = mineToday(kind)
     if (mine && !confirm(`Remove “You ${KINDS.find((k) => k.kind === kind)!.done(name)}”?`)) return
     setBusy(true)
     try {
@@ -51,7 +53,7 @@ export default function FollowUps({ social, about, name }: { social: Social; abo
       )}
       <div className="grid grid-cols-2 gap-2">
         {KINDS.map((k) => {
-          const done = list.some((f) => f.kind === k.kind && f.from_user === social.me)
+          const done = !!mineToday(k.kind)
           return (
             <button key={k.kind} className={`btn min-h-11 px-2 text-sm ${done
               ? 'bg-emerald-100 text-emerald-950 ring-2 ring-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-50'
@@ -67,9 +69,14 @@ export default function FollowUps({ social, about, name }: { social: Social; abo
   )
 }
 
+/** Calendar days ago on this phone's clock (0 = today, since midnight). */
+function daysAgo(iso: string): number {
+  const local = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return daysBetween(local(new Date(iso)), local(new Date()))
+}
+
 /** "today", "yesterday", "3 days ago". */
 function when(iso: string): string {
-  const local = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const days = daysBetween(local(new Date(iso)), local(new Date()))
+  const days = daysAgo(iso)
   return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
 }
