@@ -65,7 +65,7 @@ export default function Pray() {
           </div>
         )}
         <PrayerWordBox who={group ? 'the group' : r.who}
-          onSend={(message) => sendPrayerWord({ group_id: r.group_id!, to_user: r.to_user, checkin_id: r.checkin_id, topic: r.topic, reply_to: r.reply_to, message }).then(() => undefined)}
+          onSend={(message, groupSees) => sendPrayerWord({ group_id: r.group_id!, to_user: r.to_user, checkin_id: r.checkin_id, topic: r.topic, reply_to: r.reply_to, message, group_sees: groupSees }).then(() => undefined)}
           onDone={() => navigate(r.link || '/', { replace: true })} />
         <ErrorText error={shared.error} />
       </section>

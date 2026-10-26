@@ -7,6 +7,7 @@ import { useAsync } from '../components/useAsync'
 import HabitPot from '../components/HabitPot'
 import PrayerPrompt from '../components/PrayerPrompt'
 import StreakBadge from '../components/StreakBadge'
+import WhoSees from '../components/WhoSees'
 import FollowUps from '../components/FollowUps'
 import { CheckinReaction, generalPrayersFor, MessageReactions, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
@@ -245,6 +246,7 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
   const [writing, setWriting] = useState(false)
   const [praying, setPraying] = useState(false)
   const [text, setText] = useState('')
+  const [groupSees, setGroupSees] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const pray = prayActions(social, { toUser, who: name, link: `/groups/${social.groupId}/member/${toUser}` })
@@ -252,9 +254,10 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
   async function sendMessage() {
     setError(null)
     try {
-      await sendEncouragement({ group_id: social.groupId, kind: 'message', to_user: toUser, message: text })
-      setStatus('Sent ✓')
+      await sendEncouragement({ group_id: social.groupId, kind: 'message', to_user: toUser, message: text, group_sees: groupSees })
+      setStatus(groupSees ? 'Sent ✓ The group can see it in the feed.' : 'Sent ✓')
       setText('')
+      setGroupSees(false)
       setWriting(false)
       social.onSent()
     } catch (e) {
@@ -272,13 +275,14 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
         <PrayerPrompt subject={name}
           onPrayed={async () => { await pray.onPrayed(); setStatus(`🙏 ${name} will know you’re praying.`) }}
           onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}
-          onWord={async (m) => { await pray.onWord(m); setStatus(`🙏 ${name} will know you’re praying, and got your word.`) }}
+          onWord={async (m, g) => { await pray.onWord(m, g); setStatus(`🙏 ${name} will know you’re praying, and got your word.`) }}
           onClose={() => setPraying(false)} />
       )}
       {writing && (
         <div className="space-y-2">
           <label className="sr-only" htmlFor={`msg-${toUser}`}>Message</label>
-          <textarea id={`msg-${toUser}`} className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="Only you two see this" />
+          <textarea id={`msg-${toUser}`} className="input" rows={2} maxLength={280} value={text} onChange={(e) => setText(e.target.value)} placeholder="A word of encouragement…" />
+          <WhoSees name={name} groupSees={groupSees} onChange={setGroupSees} />
           <div className="flex items-center justify-between">
             <span className="muted">{280 - text.length}</span>
             <button className="btn-primary" disabled={!text.trim()} onClick={sendMessage}>Send</button>
@@ -330,14 +334,17 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
         {items.map((e) => (
           <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
             <div>
-              <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.from_prayer ? '🙏' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
+              <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.from_prayer ? '🙏' : e.reply_to ? '💬' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
               {e.kind === 'sos' ? 'asked for prayer and support' : e.to_user ? `→ ${e.to_user === me ? 'you' : nameOf(e.to_user)}` : ''}
+              {e.to_user && !e.group_sees && <span className="muted"> · only you two</span>}
             </div>
-            {e.from_prayer && <PrayerTag o={o} e={e} items={items} nameOf={nameOf} />}
+            {e.from_prayer ? <PrayerTag o={o} e={e} items={items} nameOf={nameOf} />
+              : e.reply_to && <ReplyTag e={e} items={items} social={social} nameOf={nameOf} />}
             {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
             <div className="mt-1 flex min-h-8 items-center gap-2">
               <time className="muted flex-1">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
-              <MessageReactions e={e} social={social} />
+              <MessageReactions e={e} social={social}
+                replied={items.some((x) => x.reply_to === e.id && x.from_user === me && x.kind === 'message' && !x.from_prayer)} />
             </div>
           </li>
         ))}
@@ -359,6 +366,21 @@ function PrayerTag({ o, e, items, nameOf }: { o: GroupOverview; e: Encouragement
   return (
     <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
       <span className="truncate">🙏 After praying{about ? ` · ${about}` : ''}</span>
+    </span>
+  )
+}
+
+/** On a reply: "↩︎ Reply to “Pray for my exam…”", or to someone's 🙏 / 👏. */
+function ReplyTag({ e, items, social, nameOf }: { e: Encouragement; items: Encouragement[]; social: Social; nameOf: (uid: string | null) => string }) {
+  const r = items.find((x) => x.id === e.reply_to) ?? social.reactions.find((x) => x.id === e.reply_to)
+  const whose = (uid: string) => (uid === social.me ? 'your' : `${nameOf(uid)}’s`)
+  const about = !r ? 'a message'
+    : r.kind === 'prayer' ? `${whose(r.from_user)} 🙏 prayer`
+    : r.kind === 'kudos' ? `${whose(r.from_user)} 👏 kudos`
+    : r.message ? `“${r.message.length > 30 ? `${r.message.slice(0, 30)}…` : r.message}”` : `${whose(r.from_user)} message`
+  return (
+    <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+      <span className="truncate">↩︎ Reply to {about}</span>
     </span>
   )
 }

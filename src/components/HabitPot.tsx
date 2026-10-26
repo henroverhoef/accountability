@@ -36,8 +36,8 @@ function Category({ c, social }: { c: PotCategory; social: Social }) {
   const pray = prayActions(social, { topic: c.name, who: 'the group', what: c.name, link: `/groups/${social.groupId}?tab=overview` })
   // A word after praying goes to that person when the habit is just one other person's, else to the group.
   const only = c.people.length === 1 && c.people[0].user_id !== social.me ? c.people[0] : null
-  const sendWord = async (message: string) => {
-    await sendPrayerWord({ group_id: social.groupId, to_user: only?.user_id ?? null, checkin_id: null, topic: c.name, message })
+  const sendWord = async (message: string, groupSees: boolean) => {
+    await sendPrayerWord({ group_id: social.groupId, to_user: only?.user_id ?? null, checkin_id: null, topic: c.name, message, group_sees: groupSees })
     social.onSent()
   }
 
@@ -83,7 +83,7 @@ function Category({ c, social }: { c: PotCategory; social: Social }) {
           details={<><span className="font-semibold">Shared by {names.join(', ')}.</span>{total > 0 && <span className="block">This week: {summary}</span>}</>}
           onPrayed={async () => { await pray.onPrayed(); setStatus('🙏 The group will see you prayed for this.') }}
           onLater={async (at) => { await pray.onLater(at); setStatus(`⏰ We’ll remind you at ${at.toTimeString().slice(0, 5)}.`) }}
-          onWord={async (m) => { await sendWord(m); setStatus(only ? `🙏 ${only.name} got your word.` : '🙏 The group will see you prayed for this, and your word is in the feed.') }}
+          onWord={async (m, g) => { await sendWord(m, g); setStatus(only ? `🙏 ${only.name} got your word.` : '🙏 The group will see you prayed for this, and your word is in the feed.') }}
           wordTo={only ? only.name : 'the group'}
           onClose={() => setPraying(false)} />
       )}

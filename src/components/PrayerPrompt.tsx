@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import ErrorText, { errorMessage } from './ErrorText'
 import { listUpcomingPrayerReminders } from '../lib/groups'
 import { joinNames, prayerMoments } from '../lib/prayer'
+import WhoSees from './WhoSees'
 
 /**
  * Before a 🙏 is sent: a moment to actually pray. "I prayed", "Set aside a moment later"
@@ -15,7 +16,7 @@ export default function PrayerPrompt({ subject, who, wordTo, details, onPrayed, 
   details?: React.ReactNode // what they shared, to pray into
   onPrayed: () => Promise<void>
   onLater?: (at: Date) => Promise<void> // leave out to only offer "I prayed"
-  onWord?: (message: string) => Promise<void> // after praying: send what you felt / an encouragement
+  onWord?: (message: string, groupSees: boolean) => Promise<void> // after praying: send what you felt / an encouragement
   wordTo?: string // who receives that word, if not `who` ("the group")
   onClose: () => void
 }) {
@@ -118,11 +119,12 @@ export default function PrayerPrompt({ subject, who, wordTo, details, onPrayed, 
 
 /**
  * After praying: anything you felt, sensed or want to encourage them with. Sent as a
- * personal message (to the group for a group prayer), tagged with what you prayed about.
- * Empty is fine: the button just says Amen.
+ * personal message (to the group for a group prayer), tagged with what you prayed about;
+ * you can let the group see a personal one too. Empty is fine: the button just says Amen.
  */
-export function PrayerWordBox({ who, onSend, onDone }: { who: string; onSend: (message: string) => Promise<void>; onDone: () => void }) {
+export function PrayerWordBox({ who, onSend, onDone }: { who: string; onSend: (message: string, groupSees: boolean) => Promise<void>; onDone: () => void }) {
   const [text, setText] = useState('')
+  const [groupSees, setGroupSees] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const group = who === 'the group'
@@ -132,7 +134,7 @@ export function PrayerWordBox({ who, onSend, onDone }: { who: string; onSend: (m
     setBusy(true)
     setError(null)
     try {
-      await onSend(text.trim())
+      await onSend(text.trim(), !group && groupSees)
       onDone()
     } catch (e) {
       setError(errorMessage(e))
@@ -145,7 +147,12 @@ export function PrayerWordBox({ who, onSend, onDone }: { who: string; onSend: (m
       <label htmlFor="prayer-word" className="label">Anything you felt, sensed or want to encourage {who} with? (optional)</label>
       <textarea id="prayer-word" className="input" rows={3} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)}
         placeholder="A verse, a picture, a word of encouragement…" />
-      <p className="muted text-xs">{group ? 'The whole group will see this' : `Only ${who} will see this`}, marked as a word from your prayer.</p>
+      {group ? <p className="muted text-xs">The whole group will see this, marked as a word from your prayer.</p> : (
+        <>
+          <WhoSees name={who} groupSees={groupSees} onChange={setGroupSees} />
+          <p className="muted text-xs">It’s marked as a word from your prayer.</p>
+        </>
+      )}
       <ErrorText error={error} />
       <button className="btn-primary w-full" disabled={busy} onClick={finish}>
         {busy ? 'Sending…' : text.trim() ? `✉️ Send to ${who}` : 'Amen'}

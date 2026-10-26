@@ -80,7 +80,8 @@ export interface Encouragement {
   message: string | null
   topic?: string | null // a prayer for the whole group about one shared habit
   from_prayer?: boolean // a word sent after praying (tagged with what the prayer was about)
-  reply_to?: string | null // a kudos / prayer / word about this feed message
+  reply_to?: string | null // a kudos / prayer / word / reply about this encouragement
+  group_sees?: boolean // a message to one person that the group may read too
   created_at: string
 }
 
@@ -94,6 +95,11 @@ export interface RecentEncouragement {
   to_me: boolean
   checkin_id: string | null // which of MY check-ins a prayer or kudos was about
   created_at: string
+  // From the encouragement itself (see recentForMe):
+  from_user?: string
+  from_prayer?: boolean
+  reply_to?: string | null
+  group_sees?: boolean
 }
 
 async function unwrap<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<T> {
@@ -148,13 +154,21 @@ export const addFollowUp = (groupId: string, aboutUser: string, kind: FollowUpKi
 
 export const removeFollowUp = (id: string) => unwrap(supabase.from('support_followups').delete().eq('id', id))
 
-export const recentEncouragements = (limit = 3) => unwrap<RecentEncouragement[]>(supabase.rpc('recent_for_me', { p_limit: limit }))
+/** Home's "From your groups", with who sent each one (to reply to) and whether it's a reply. */
+export async function recentEncouragements(limit = 3): Promise<RecentEncouragement[]> {
+  const recent = await unwrap<RecentEncouragement[]>(supabase.rpc('recent_for_me', { p_limit: limit }))
+  if (recent.length === 0) return recent
+  const rows = await unwrap<Pick<Encouragement, 'id' | 'from_user' | 'from_prayer' | 'reply_to' | 'group_sees'>[]>(
+    supabase.from('encouragements').select('id, from_user, from_prayer, reply_to, group_sees').in('id', recent.map((e) => e.id)))
+  return recent.map((e) => ({ ...e, ...rows.find((r) => r.id === e.id) }))
+}
 
 export function sendEncouragement(e: {
   group_id: string; kind: Encouragement['kind']; to_user?: string | null; checkin_id?: string | null; message?: string | null; topic?: string | null
   from_prayer?: boolean; reply_to?: string | null
+  group_sees?: boolean // a message to one person: let the group see it too
 }) {
-  return unwrap(supabase.from('encouragements').insert({ ...e, message: e.message?.trim() || null }))
+  return unwrap(supabase.from('encouragements').insert({ ...e, group_sees: Boolean(e.to_user && e.group_sees), message: e.message?.trim() || null }))
 }
 
 /** My sharing choices: habit id -> group id -> visibility. */
@@ -202,6 +216,7 @@ export const getPrayerReminder = (id: string) => unwrap<PrayerReminder>(supabase
 /** A word after praying: a personal message (the group's, for a group prayer), tagged with what it was about. */
 export const sendPrayerWord = (w: {
   group_id: string; to_user: string | null; checkin_id: string | null; topic: string | null; reply_to?: string | null; message: string
+  group_sees?: boolean
 }) => sendEncouragement({ ...w, kind: 'message', from_prayer: true })
 
 /** One message or SOS (if you can see it), e.g. the one a planned prayer is about. */

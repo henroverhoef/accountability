@@ -144,10 +144,20 @@ choose **I already use Steadfast** and type it in.
   yesterday, per-habit reminders and a wind-down reminder before a bedtime target.
 - **Group feed**: messages to the group (updates, prayer requests, encouragement) and SOS.
   Check-ins are on each member's page; kudos and prayers show on the check-ins themselves.
-  Each message has two small buttons on its time line: 👏 kudos (one tap) and 🙏 (the same
+  Each message has three small buttons on its time line: 👏 kudos (one tap), 🙏 (the same
   "pray with intention" pop-up as everywhere: pray now, set aside a moment, add to a prayer
-  time, and a word afterwards). A cry for help (SOS) only gets 🙏. Counts show next to them
-  ("🙏 2 · 👏 1", tap for who). Tapping a message, SOS or a reaction to one opens the feed.
+  time, and a word afterwards) and 💬 a short reply. A cry for help (SOS) gets no 👏. Counts
+  show next to them ("🙏 2 · 👏 1", tap for who). Tapping a message, SOS or a reaction to one
+  opens the feed.
+- **Personal messages** (✉️ Message on a member, or the word after praying) are only for that
+  person by default; tick **Let the group see this too** to encourage them in front of the
+  group (it then shows in the feed). Private ones are marked "only you two" in the feed.
+  The database enforces this (`encouragements.group_sees`).
+- **Replies**: 💬 on a feed message or on anything under Home → "From your groups" (a prayer,
+  kudos, a message) opens a short reply with quick options ("Thank you 🙏", "I really needed
+  this", "Amen!"). It goes to whoever sent it, tagged "↩︎ Reply to …". The group can see it
+  too only if you tick the box, and that's only offered when the group could see what you're
+  replying to (a private message gets a private reply).
 - **Group Overview** (group → Overview): everyone's shared habits in one pot, grouped by
   name (all the "No Short-form Video" habits together), with how the last 7 days went as a
   bar: good / mixed / hard / checked in / missed. A habit where the answers were mostly hard

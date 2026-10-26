@@ -7,6 +7,7 @@ import { useAsync } from '../components/useAsync'
 import { listMyGroups, listUpcomingPrayerReminders, recentEncouragements, type RecentEncouragement } from '../lib/groups'
 import QuickTip from '../components/QuickTip'
 import StreakBadge from '../components/StreakBadge'
+import ReplyBox from '../components/ReplyBox'
 import { prayerMoments } from '../lib/prayer'
 
 function timeAgo(iso: string): string {
@@ -33,6 +34,8 @@ export default function Home() {
   const honesty = honestyStreak(activeHabits, checkins, today)
   const encouragement = useAsync(() => recentEncouragements(3), [])
   const prayerPlans = useAsync(listUpcomingPrayerReminders, [])
+  const [replyTo, setReplyTo] = useState<RecentEncouragement | null>(null)
+  const [replied, setReplied] = useState<string[]>([])
   // After a hard stretch (hidden rule, see logic/support.ts): encourage reaching out.
   const hardStretch = supportReason(activeHabits, checkins, today) === 'hard'
 
@@ -42,6 +45,16 @@ export default function Home() {
     const h = c && habits.find((x) => x.id === c.habit_id)
     return h ? ` ${e.kind === 'kudos' ? 'for' : 'about'} ${h.icon} ${h.name}` : '' // (a message with a check-in is a word after praying)
   }
+  const isWord = (e: RecentEncouragement) => e.kind === 'message' && Boolean(e.from_prayer || e.checkin_id)
+  const isReply = (e: RecentEncouragement) => e.kind === 'message' && !isWord(e) && Boolean(e.reply_to)
+  /** "is praying for you about 🛡️ Purity", "replied to you", "posted in Swordsmen"… */
+  const what = (e: RecentEncouragement) =>
+    (e.kind === 'prayer' && !e.to_me ? `prayed for ${e.group_name}`
+      : e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text
+      : !e.to_me ? `posted in ${e.group_name}`
+      : isWord(e) ? 'sent you a word after praying'
+      : isReply(e) ? 'replied to you' : 'sent you a message')
+    + ((e.kind === 'prayer' || e.kind === 'kudos' || (e.kind === 'message' && e.to_me)) ? about(e) : '')
 
   return (
     <div className="page space-y-4">
@@ -127,22 +140,27 @@ export default function Home() {
           <h2 className="h2 mb-2">From your groups</h2>
           <ul className="space-y-2">
             {encouragement.data.map((e) => (
-              <li key={e.id}>
+              <li key={e.id} className="flex items-start gap-2">
                 {/* Prayers and kudos open your own page in that group (they show on your check-ins); the rest open the feed. */}
                 <Link to={e.kind === 'prayer' && !e.to_me ? `/groups/${e.group_id}?tab=overview`
-                  : e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block text-sm">
-                  <span aria-hidden>{e.kind === 'message' && e.checkin_id ? '🙏' : ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
-                  <strong>{e.from_name}</strong>{' '}
-                  {e.kind === 'prayer' && !e.to_me ? `prayed for ${e.group_name}`
-                    : e.kind !== 'message' ? ENCOURAGEMENT_TEXT[e.kind].text
-                    : e.to_me ? (e.checkin_id ? 'sent you a word after praying' : 'sent you a message') : `posted in ${e.group_name}`}
-                  {(e.kind === 'prayer' || e.kind === 'kudos' || (e.kind === 'message' && e.to_me)) && about(e)}
+                  : e.kind === 'prayer' || e.kind === 'kudos' ? `/groups/${e.group_id}/member/${session?.user.id}` : `/groups/${e.group_id}?tab=feed`} className="block min-w-0 flex-1 text-sm">
+                  <span aria-hidden>{isWord(e) ? '🙏' : isReply(e) ? '💬' : ENCOURAGEMENT_TEXT[e.kind].icon}</span>{' '}
+                  <strong>{e.from_name}</strong> {what(e)}
                   <span className="muted"> · {timeAgo(e.created_at)}</span>
                   {e.message && <span className="muted block truncate">“{e.message}”</span>}
                 </Link>
+                {e.from_user && (replied.includes(e.id)
+                  ? <span className="muted shrink-0 py-1.5 text-xs">✓ Replied</span>
+                  : <button className="h-8 w-8 shrink-0 rounded-full bg-slate-100 text-sm dark:bg-slate-800" aria-label={`Reply to ${e.from_name}`} onClick={() => setReplyTo(e)}>💬</button>)}
               </li>
             ))}
           </ul>
+          {replyTo && (
+            <ReplyBox groupId={replyTo.group_id} to={replyTo.from_user!} name={replyTo.from_name} replyTo={replyTo.id}
+              quote={<><strong>{replyTo.from_name}</strong> {what(replyTo)}{replyTo.message && <span className="block italic">“{replyTo.message}”</span>}</>}
+              groupCanSee={replyTo.kind !== 'message' || !replyTo.to_me || Boolean(replyTo.group_sees)}
+              onSent={() => setReplied((r) => [...r, replyTo.id])} onClose={() => setReplyTo(null)} />
+          )}
         </section>
       )}
 

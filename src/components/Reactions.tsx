@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { errorMessage } from './ErrorText'
 import PrayerPrompt from './PrayerPrompt'
+import ReplyBox from './ReplyBox'
 import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type FollowUp, type SharedCheckin, type SharedHabit } from '../lib/groups'
 
 // Kudos (👏) and prayers (🙏) are shown as small labels on what they're about: a check-in,
@@ -49,8 +50,8 @@ export function prayActions(social: Social, p: {
       await record()
       social.onSent()
     },
-    onWord: async (message: string) => {
-      await sendPrayerWord({ group_id: social.groupId, ...about, message })
+    onWord: async (message: string, groupSees = false) => {
+      await sendPrayerWord({ group_id: social.groupId, ...about, message, group_sees: groupSees })
       social.onSent()
     },
   }
@@ -163,12 +164,13 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
 }
 
 /**
- * Under a feed message: "🙏 2 👏 1" (tap for who) and two small buttons. Kudos is one tap;
- * praying opens the same pop-up as everywhere else. No kudos on a cry for help (SOS), and
- * no buttons on your own messages.
+ * Under a feed message: "🙏 2 👏 1" (tap for who) and three small buttons. Kudos is one tap;
+ * praying opens the same pop-up as everywhere else; 💬 a short reply. No kudos on a cry for
+ * help (SOS), and no buttons on your own messages.
  */
-export function MessageReactions({ e, social }: { e: Encouragement; social: Social }) {
+export function MessageReactions({ e, social, replied = false }: { e: Encouragement; social: Social; replied?: boolean }) {
   const [praying, setPraying] = useState(false)
+  const [replying, setReplying] = useState(false)
   const [sent, setSent] = useState<{ kudos?: boolean; prayer?: boolean }>({})
   const list = reactionsForMessage(social, e.id)
   const mine = e.from_user === social.me
@@ -204,7 +206,15 @@ export function MessageReactions({ e, social }: { e: Encouragement; social: Soci
           )}
           <button className={`${button} ${done('prayer') ? on : off}`} disabled={done('prayer')} onClick={() => setPraying(true)}
             aria-label={done('prayer') ? `Praying for ${author}: done` : `Pray for ${author} about this`}>🙏</button>
+          <button className={`${button} ${replied ? on : off}`} onClick={() => setReplying(true)}
+            aria-label={replied ? `Reply to ${author} again` : `Reply to ${author}`}>💬</button>
         </>
+      )}
+      {replying && (
+        <ReplyBox groupId={social.groupId} to={e.from_user} name={author} replyTo={e.id}
+          quote={snippet ? <span className="italic">“{snippet}”</span> : undefined}
+          groupCanSee={e.kind === 'sos' || !e.to_user || Boolean(e.group_sees)}
+          onSent={social.onSent} onClose={() => setReplying(false)} />
       )}
       {praying && (
         <PrayerPrompt subject={e.kind === 'sos' ? `${author}, who asked for help` : `${author} and what they shared`} who={author}
