@@ -41,7 +41,7 @@ export default function Summary() {
       {activeHabits.map((h) => {
         const w = s.habits.find((x) => x.habitId === h.id)
         if (!w || w.due === 0) return null
-        const outcomes: Outcome[] = hasMidOutcome(h.type) ? ['good', 'mid', 'bad'] : ['good', 'bad']
+        const outcomes: Outcome[] = hasMidOutcome(h) ? ['good', 'mid', 'bad'] : ['good', 'bad']
         const avg = h.type === 'scale' ? averageScore(checkins.filter((c) => c.habit_id === h.id && c.date >= s.start && c.date <= s.end)) : null
         return (
           <section key={h.id} className="card">

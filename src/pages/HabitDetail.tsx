@@ -47,7 +47,7 @@ export default function HabitDetail() {
         {streak.green === 0 && streak.current > 0 && (
           <div className="muted text-sm">❤️‍🔥 back after {streak.greenBackIn} more green day{streak.greenBackIn === 1 ? '' : 's'}</div>
         )}
-        {hasMidOutcome(habit.type) && <StreakLegend className="mt-2" />}
+        {hasMidOutcome(habit) && <StreakLegend className="mt-2" />}
       </div>
 
       <section className="card">
@@ -61,7 +61,7 @@ export default function HabitDetail() {
           <p className="mb-2">Average score: <strong className="text-xl">{averageScore(last30)}</strong> / 10</p>
         )}
         <ul className="space-y-1">
-          {counts.filter(({ o }) => o !== 'mid' || hasMidOutcome(habit.type)).map(({ o, n }) => (
+          {counts.filter(({ o }) => o !== 'mid' || hasMidOutcome(habit)).map(({ o, n }) => (
             <li key={o} className="flex items-center gap-2">
               <span className={`h-3 w-3 rounded-full ${OUTCOME_STYLES[o].dot}`} />
               <span className="flex-1">{outcomeLabel(habit, o)}</span>

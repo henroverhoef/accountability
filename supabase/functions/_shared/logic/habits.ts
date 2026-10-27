@@ -36,7 +36,8 @@ export function isSuccess(outcome: Outcome | undefined | null): boolean {
 }
 
 /**
- * Time target (e.g. "in bed by 22:30"): success if actual is at or before target + grace.
+ * Time target (e.g. "in bed by 22:30"): at or before the target is green, within the grace
+ * minutes after it amber, later than that red.
  * Times are compared within ±12 hours of the target, so 00:15 counts as 105 minutes
  * LATE for a 22:30 target (not 22 hours early).
  */
@@ -44,7 +45,7 @@ export function evaluateTime(actual: string, target: string, graceMinutes = 0): 
   let diff = timeToMinutes(actual) - timeToMinutes(target)
   if (diff > 720) diff -= 1440
   if (diff <= -720) diff += 1440
-  return diff <= graceMinutes ? 'good' : 'bad'
+  return diff <= 0 ? 'good' : diff <= graceMinutes ? 'mid' : 'bad'
 }
 
 /** Amount target (e.g. "at least 1 chapter", "at most 30 minutes"). */

@@ -5,7 +5,7 @@ import type { Habit } from './types'
 export const DEFAULT_LABELS: Record<HabitType, Partial<Record<Outcome, string>>> = {
   avoid: { good: 'Clean', mid: 'Struggled', bad: 'Slipped' },
   done: { good: 'Done', mid: 'Partly', bad: 'Skipped' },
-  time: { good: 'On time', bad: 'Late' },
+  time: { good: 'On time', mid: 'Within grace', bad: 'Late' },
   amount: { good: 'Target met', bad: 'Missed target' },
   scale: { good: 'Strong (7–10)', mid: 'Mixed (4–6)', bad: 'Hard (1–3)' },
 }
@@ -22,9 +22,13 @@ export function outcomeLabel(habit: Pick<Habit, 'type' | 'outcome_options'>, out
   return habit.outcome_options?.[outcome] || DEFAULT_LABELS[habit.type][outcome] || outcome
 }
 
-/** Types whose answers come in three levels (green / amber / red). */
-export function hasMidOutcome(type: HabitType): boolean {
-  return type === 'avoid' || type === 'done' || type === 'scale'
+/**
+ * Do this habit's answers come in three levels (green / amber / red)? A time target only
+ * with grace minutes (a group's copy doesn't say, so it may).
+ */
+export function hasMidOutcome(habit: { type: HabitType; grace_minutes?: number | null }): boolean {
+  if (habit.type === 'time') return habit.grace_minutes === undefined || (habit.grace_minutes ?? 0) > 0
+  return habit.type === 'avoid' || habit.type === 'done' || habit.type === 'scale'
 }
 
 /**

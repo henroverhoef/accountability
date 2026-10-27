@@ -137,6 +137,9 @@ export default function HabitEdit() {
             <label htmlFor="grace" className="label">Grace minutes</label>
             <input id="grace" type="number" min={0} max={120} className="input" value={form.grace_minutes} onChange={(e) => set({ grace_minutes: Number(e.target.value) })} />
           </div>
+          <p className="muted col-span-2 text-sm">
+            At or before the target is green. {form.grace_minutes > 0 ? `Up to ${form.grace_minutes} minutes after it is yellow, later is red.` : 'Any later is red.'}
+          </p>
         </div>
       )}
 

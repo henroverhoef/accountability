@@ -87,7 +87,7 @@ function Legend({ habit, checkinOnly }: { habit: HeatmapHabit; checkinOnly: bool
     ? [[CHECKED_IN_ONLY, 'Checked in'], ['bg-slate-300 dark:bg-slate-600', 'No check-in']]
     : [
         [OUTCOME_STYLES.good.dot, outcomeLabel(habit, 'good')],
-        ...(hasMidOutcome(habit.type) ? [[OUTCOME_STYLES.mid.dot, outcomeLabel(habit, 'mid')] as [string, string]] : []),
+        ...(hasMidOutcome(habit) ? [[OUTCOME_STYLES.mid.dot, outcomeLabel(habit, 'mid')] as [string, string]] : []),
         [OUTCOME_STYLES.bad.dot, outcomeLabel(habit, 'bad')],
         ['bg-slate-300 dark:bg-slate-600', 'No check-in'],
       ]

@@ -9,13 +9,17 @@ describe('evaluateTime (target is "at or before")', () => {
   it('late is a miss', () => {
     expect(evaluateTime('22:31', '22:30')).toBe('bad')
   })
-  it('grace minutes extend the target', () => {
-    expect(evaluateTime('22:40', '22:30', 10)).toBe('good')
+  it('within the grace minutes is amber, after them red', () => {
+    expect(evaluateTime('22:30', '22:30', 10)).toBe('good')
+    expect(evaluateTime('22:31', '22:30', 10)).toBe('mid')
+    expect(evaluateTime('22:40', '22:30', 10)).toBe('mid')
     expect(evaluateTime('22:41', '22:30', 10)).toBe('bad')
+    // Target 22:00, 30 minutes grace: 22:15 is amber, not green.
+    expect(evaluateTime('22:15', '22:00', 30)).toBe('mid')
   })
   it('after midnight counts as late, not early', () => {
     expect(evaluateTime('00:15', '22:30')).toBe('bad')
-    expect(evaluateTime('01:30', '23:30', 120)).toBe('good')
+    expect(evaluateTime('01:30', '23:30', 120)).toBe('mid')
   })
   it('works for targets just after midnight', () => {
     expect(evaluateTime('23:50', '00:15')).toBe('good')
