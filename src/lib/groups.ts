@@ -1,6 +1,6 @@
 // Everything to do with groups talks to the database through these functions.
 import { supabase } from './supabase'
-import type { HabitType, Outcome } from './logic'
+import type { CommitmentAnswer, HabitType, Outcome } from './logic'
 import type { OutcomeLabels } from './types'
 
 export type Visibility = 'private' | 'checkin' | 'result' | 'notes'
@@ -126,6 +126,26 @@ export const listEncouragements = (groupId: string) =>
 export const listReactions = (groupId: string) =>
   unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos'])
     .gte('created_at', new Date(Date.now() - 45 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(1000))
+
+// ---------- "Let your yes be yes" (commitment checks) -------------------------------
+// Your honest answer when a habit you committed to has been hard to keep. Private to
+// you (RLS); sharing what you'll change with a group is a normal feed message.
+
+export interface CommitmentCheck {
+  id: string
+  habit_id: string
+  answer: CommitmentAnswer
+  note: string | null
+  created_at: string
+}
+
+/** Your answers from the last two months, newest first. */
+export const listCommitmentChecks = () =>
+  unwrap<CommitmentCheck[]>(supabase.from('commitment_checks').select('id, habit_id, answer, note, created_at')
+    .gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString()).order('created_at', { ascending: false }))
+
+export const addCommitmentCheck = (habitId: string, answer: CommitmentAnswer, note: string | null = null) =>
+  unwrap(supabase.from('commitment_checks').insert({ habit_id: habitId, answer, note: note?.trim() || null }))
 
 // ---------- "I've called / had coffee with them" ----------------------------------
 // When someone could use support, the group notes who followed up. The database never

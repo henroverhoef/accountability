@@ -14,7 +14,7 @@ import {
   getOverview, inviteLink, listEncouragements, listFollowUps, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
   type Encouragement, type FollowUp, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
-import { addDays, daysBetween, habitStreak, supportReason, type CheckinLike } from '../lib/logic'
+import { addDays, daysBetween, habitStreak, strugglingToCommit, supportReason, type CheckinLike } from '../lib/logic'
 import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
 
 type Tab = 'members' | 'overview' | 'feed' | 'sharing' | 'invite'
@@ -114,6 +114,30 @@ export function memberSupportReason(o: GroupOverview, m: GroupMember) {
   return supportReason(habits, o.checkins.filter((c) => c.user_id === m.user_id), m.today)
 }
 
+/**
+ * Shared habits this member committed to and has found hard to keep lately (each on its
+ * own, see logic/commitment.ts), going only by what they share with this group.
+ */
+export function commitmentStruggles(o: GroupOverview, m: GroupMember): SharedHabit[] {
+  const checkins = o.checkins.filter((c) => c.user_id === m.user_id)
+  return o.habits.filter((h) => h.user_id === m.user_id && strugglingToCommit({ ...h, archived: false }, checkins, m.today))
+}
+
+/** "Let your yes be yes": an invitation to an honest chat about one commitment. */
+export function CommitmentNote({ name, habits }: { name: string; habits: SharedHabit[] }) {
+  const list = habits.map((h) => `${h.icon} ${h.name}`).join(', ')
+  return (
+    <div className="space-y-1 rounded-lg bg-sky-100 p-3 text-sm text-sky-950 dark:bg-sky-900/40 dark:text-sky-50">
+      <p className="font-semibold">🤝 {name} is struggling to commit to {list}.</p>
+      <p>
+        Maybe have an honest chat. If it’s what the Lord has called {name} to, what needs to change to keep it? If it isn’t for
+        this season, it’s better to lay it down than to keep saying yes and not doing it. Either way, back {name} in it.
+      </p>
+      <p className="text-xs italic opacity-80">“Let your ‘Yes’ be ‘Yes,’ and your ‘No,’ ‘No.’” Matthew 5:37</p>
+    </div>
+  )
+}
+
 /** A gentle nudge to the group: after a hard stretch, or when someone has gone quiet. */
 export function SupportPrompt({ name, reason }: { name: string; reason: 'hard' | 'quiet' }) {
   if (reason === 'quiet') {
@@ -141,7 +165,8 @@ function MemberCard({ o, member: m, social }: { o: GroupOverview; member: GroupM
   const name = m.display_name || 'Someone'
   const quietDays = daysSinceCheckin(m)
   const support = isMe ? null : memberSupportReason(o, m)
-  const needsLove = !isMe && (support !== null || quietDays >= 3)
+  const commitments = isMe ? [] : commitmentStruggles(o, m)
+  const needsLove = !isMe && (support !== null || quietDays >= 3 || commitments.length > 0)
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
 
   return (
@@ -158,11 +183,12 @@ function MemberCard({ o, member: m, social }: { o: GroupOverview; member: GroupM
         </span>
       </div>
 
-      {support ? <SupportPrompt name={name} reason={support} /> : needsLove && (
+      {support ? <SupportPrompt name={name} reason={support} /> : !isMe && quietDays >= 3 && (
         <p className="rounded-lg bg-amber-100 p-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
           No check-in for {quietDays} days. Maybe reach out?
         </p>
       )}
+      {commitments.length > 0 && <CommitmentNote name={name} habits={commitments} />}
       {needsLove && <FollowUps social={social} about={m.user_id} name={name} />}
 
       {habits.length > 0 && (

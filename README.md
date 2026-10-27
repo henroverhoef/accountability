@@ -185,6 +185,20 @@ choose **I already use Steadfast** and type it in.
   and encourages the person to reach out too, with at most one notification a week (at noon).
   No score is ever shown. The group's prompt only uses what that person shares with the
   group. The rule is in `supabase/functions/_shared/logic/support.ts`.
+- **"Let your yes be yes"** (commitment checks): when one habit you committed to *do*
+  (done / bedtime / amount habits) has been kept less than half the time over the last two
+  weeks, Home asks you about it honestly, whatever your other habits look like. Is this what the
+  Lord has called you to in this season? **Yes, something needs to change** (write what, and
+  optionally share it in the group feed so they can back you), **I'm not sure, I'll pray about
+  it again** (asks again in 3 days), or **It's not for this season** (change the commitment,
+  or lay the habit down: archived, history kept). With the two sons (Matthew 21:28–31),
+  Matthew 5:37, Ecclesiastes 5:5 and James 1:22 under "Why we ask". Two weeks later it asks
+  again if it's still hard, reminding you what you said would change. Your answers are
+  private (`commitment_checks`). The group sees "🤝 Jesse is struggling to commit to 🏋️ Gym"
+  on their card (only habits shared with it, with the call/coffee buttons), and a weekly noon
+  notification goes to the person and the group (not naming the habit; not on top of a
+  support prompt). Habits you *avoid* and scores out of 10 are never asked about this way.
+  The rule is in `supabase/functions/_shared/logic/commitment.ts`.
 - **Following up**: while a member has that note (a hard stretch, or no check-in for 3+ days),
   the others get **📞 I've called …** and **☕ I've had coffee with …** buttons and see who has
   (e.g. "☕ Jared had coffee with Jesse · yesterday", or "Nobody has … this week yet"). Several

@@ -9,7 +9,7 @@ import { CheckinReaction, generalPrayersFor, ReactionLabel, reactionsFor, type S
 import { getOverview, listFollowUps, listReactions, VISIBILITY_LABELS, type SharedCheckin, type SharedHabit } from '../lib/groups'
 import { daysBetween, habitStreak, type CheckinLike } from '../lib/logic'
 import { averageScore, formatDate } from '../lib/outcomes'
-import { AnswerBadge, caughtUpLater, daysSinceCheckin, EncourageButtons, makeSocial, memberSupportReason, SupportPrompt } from './GroupDetail'
+import { AnswerBadge, caughtUpLater, commitmentStruggles, CommitmentNote, daysSinceCheckin, EncourageButtons, makeSocial, memberSupportReason, SupportPrompt } from './GroupDetail'
 
 /**
  * One group member's check-ins: everything they share with this group, per habit.
@@ -35,6 +35,7 @@ export default function MemberDetail() {
   const habits = o.habits.filter((h) => h.user_id === m.user_id)
   const quietDays = daysSinceCheckin(m)
   const support = isMe ? null : memberSupportReason(o, m)
+  const commitments = isMe ? [] : commitmentStruggles(o, m)
   const refresh = () => { overview.reload(); reactions.reload(); followUps.reload() }
   const social = makeSocial(o, me, reactions.data ?? [], refresh, followUps.data ?? [])
 
@@ -57,7 +58,8 @@ export default function MemberDetail() {
             No check-in for {quietDays} days. A short message or a prayer can mean a lot.
           </p>
         )}
-        {!isMe && (support || quietDays >= 3) && <FollowUps social={social} about={m.user_id} name={name} />}
+        {commitments.length > 0 && <CommitmentNote name={name} habits={commitments} />}
+        {!isMe && (support || quietDays >= 3 || commitments.length > 0) && <FollowUps social={social} about={m.user_id} name={name} />}
       </header>
 
       {!isMe && <EncourageButtons social={social} toUser={m.user_id} name={name} />}

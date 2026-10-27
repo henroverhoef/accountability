@@ -17,6 +17,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { addDays, localNow, timeToMinutes } from '../_shared/logic/dates.ts'
 import { dueReminders, firesFor, inQuietHours, type ReminderHabit, type ReminderProfile } from '../_shared/logic/reminders.ts'
 import { planSupportPrompts } from '../_shared/logic/support.ts'
+import { planCommitmentPrompts, type CommitmentAnswer } from '../_shared/logic/commitment.ts'
 import { joinNames, prayerMoments } from '../_shared/logic/prayer.ts'
 import { claimNotification, sendToUser } from '../_shared/sender.ts'
 import { getServerConfig } from '../_shared/config.ts'
@@ -192,25 +193,33 @@ async function supportPrompts(admin: SupabaseClient, vapid: VapidKeys, now: Date
   if (gErr) throw gErr
   const peopleIds = [...new Set([...ids, ...(members ?? []).map((m) => m.user_id as string)])]
 
-  const since = addDays(now.toISOString().slice(0, 10), -14)
-  const [people, habits, checkins, shares] = await Promise.all([
+  const since = addDays(now.toISOString().slice(0, 10), -16) // two weeks before yesterday, in any timezone
+  const [people, habits, checkins, shares, answers] = await Promise.all([
     admin.from('profiles').select('id, display_name, timezone').in('id', peopleIds),
     admin.from('habits').select('id, user_id, type, schedule_days, start_date, archived').in('user_id', peopleIds).eq('archived', false),
     admin.from('checkins').select('habit_id, user_id, date, outcome').in('user_id', peopleIds).gte('date', since),
     groupIds.length ? admin.from('habit_shares').select('habit_id, group_id, visibility').in('group_id', groupIds) : Promise.resolve({ data: [], error: null }),
+    // Only to not ask someone about a commitment again too soon after they answered.
+    admin.from('commitment_checks').select('user_id, habit_id, answer, created_at').in('user_id', ids).gte('created_at', new Date(now.getTime() - 15 * 86400000).toISOString()),
   ])
-  for (const r of [people, habits, checkins, shares]) if (r.error) throw r.error
+  for (const r of [people, habits, checkins, shares, answers]) if (r.error) throw r.error
 
-  const plan = planSupportPrompts({
+  const input = {
     recipients,
     people: (people.data ?? []).map((p) => ({ id: p.id, name: p.display_name, today: localNow(now, p.timezone).date })),
     members: members ?? [],
     habits: habits.data ?? [],
     checkins: checkins.data ?? [],
     shares: shares.data ?? [],
+  }
+  const support = planSupportPrompts(input)
+  // "Let your yes be yes": one habit that's hard to keep (not on top of a support prompt).
+  const commitment = planCommitmentPrompts({
+    ...input, now, already: support,
+    answers: (answers.data ?? []) as { user_id: string; habit_id: string; answer: CommitmentAnswer; created_at: string }[],
   })
   let sent = 0
-  for (const p of plan) {
+  for (const p of [...support, ...commitment]) {
     if (!(await claimNotification(admin, p.user_id, p.kind, p.ref))) continue // already sent this week
     sent += await sendToUser(admin, vapid, p.user_id, { title: p.title, body: p.body, url: p.url, tag: p.kind })
   }

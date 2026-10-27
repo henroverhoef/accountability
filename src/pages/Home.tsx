@@ -8,6 +8,7 @@ import { listMyGroups, listUpcomingPrayerReminders, recentEncouragements, type R
 import QuickTip from '../components/QuickTip'
 import StreakBadge from '../components/StreakBadge'
 import ReplyBox from '../components/ReplyBox'
+import CommitmentCheck from '../components/CommitmentCheck'
 import { prayerMoments } from '../lib/prayer'
 
 function timeAgo(iso: string): string {
@@ -91,6 +92,7 @@ export default function Home() {
       </section>
 
       {hardStretch && <ReachOut week={weekKey(today)} />}
+      <CommitmentCheck />
 
       <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-3 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
         🆘 I need help
