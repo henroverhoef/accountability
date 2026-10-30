@@ -59,7 +59,7 @@ function PinPad({ onUnlock }: { onUnlock: () => void }) {
   }
 
   async function forgot() {
-    if (!confirm('Sign out to reset your PIN? You can get back in with your login code (Settings → Login code on another phone). Without a login code the account can’t be recovered.')) return
+    if (!confirm('Sign out to reset your PIN? You can sign back in with your email and password (or, if you haven’t added an email yet, your login code).')) return
     clearPin()
     await supabase.auth.signOut()
     window.location.reload()

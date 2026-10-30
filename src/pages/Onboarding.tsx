@@ -2,24 +2,27 @@ import { useState } from 'react'
 import { useData } from '../data/DataProvider'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import PushToggle from '../components/PushToggle'
-import LoginCodeCard from '../components/LoginCodeCard'
+import SignInCard from '../components/SignInCard'
+import { realEmail } from '../lib/auth'
 import { TEMPLATES } from '../lib/templates'
 import { shortTime, TYPE_NAMES } from '../lib/outcomes'
 
-// Short setup after joining: habits, reminder, privacy, and saving a login code.
-const STEPS = ['habits', 'notify', 'privacy', 'code'] as const
-type Step = (typeof STEPS)[number]
+// Short setup after joining: habits, reminder, privacy (and, for an account without an
+// email yet, adding one).
+const ALL_STEPS = ['habits', 'notify', 'privacy', 'signin'] as const
+type Step = (typeof ALL_STEPS)[number]
 
 export default function Onboarding() {
-  const { profile, saveProfile, createHabit, habits } = useData()
+  const { profile, saveProfile, createHabit, habits, session } = useData()
+  const [steps] = useState(() => (realEmail(session?.user) ? ALL_STEPS.filter((s) => s !== 'signin') : [...ALL_STEPS]))
   const [step, setStep] = useState<Step>('habits')
   const [reminder, setReminder] = useState(shortTime(profile?.checkin_reminder_time) || '21:30')
   const [picked, setPicked] = useState<string[]>(['purity', 'quiet-time'])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const index = STEPS.indexOf(step)
-  const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)])
+  const index = steps.indexOf(step)
+  const next = () => setStep(steps[Math.min(index + 1, steps.length - 1)])
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
@@ -35,7 +38,7 @@ export default function Onboarding() {
 
   return (
     <div className="page">
-      <p className="muted mb-2">Step {index + 1} of {STEPS.length}</p>
+      <p className="muted mb-2">Step {index + 1} of {steps.length}</p>
 
       {step === 'habits' && (
         <section className="space-y-4">
@@ -107,15 +110,17 @@ export default function Onboarding() {
             <p>The app name, icon and notifications never mention what you’re working on.</p>
             <p>Your group can see whether you did your daily check-in, so they know when to reach out.</p>
           </div>
-          <button className="btn-primary w-full" onClick={next}>Continue</button>
+          {index < steps.length - 1
+            ? <button className="btn-primary w-full" onClick={next}>Continue</button>
+            : <button className="btn-primary w-full" disabled={busy} onClick={() => run(() => saveProfile({ onboarded: true }))}>Finish</button>}
         </section>
       )}
 
-      {step === 'code' && (
+      {step === 'signin' && (
         <section className="space-y-4">
           <h1 className="h1">Don’t lose your account</h1>
-          <p className="muted">There’s no password. Your account lives on this phone. Make a login code and keep it somewhere safe (e.g. a note in your password manager). With it you can use Steadfast on a new phone.</p>
-          <LoginCodeCard />
+          <p className="muted">Add your email and a password, so you can sign in on any phone.</p>
+          <SignInCard />
           <button className="btn-primary w-full" disabled={busy} onClick={() => run(() => saveProfile({ onboarded: true }))}>
             Finish
           </button>
@@ -124,7 +129,7 @@ export default function Onboarding() {
 
       <ErrorText error={error} />
       {index > 0 && (
-        <button className="btn-ghost mt-2 w-full" onClick={() => setStep(STEPS[index - 1])}>Back</button>
+        <button className="btn-ghost mt-2 w-full" onClick={() => setStep(steps[index - 1])}>Back</button>
       )}
     </div>
   )

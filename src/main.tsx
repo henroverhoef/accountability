@@ -4,6 +4,10 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import './lib/install' // start listening for the browser's "can install" signal early
 import App from './App'
+import { handleAuthRedirect } from './lib/auth'
+
+// Coming back from an email link (confirm your email, reset your password): finish signing in.
+handleAuthRedirect()
 
 // Install/update the service worker (offline support + notifications).
 // An installed app can stay open in the background for days, so also look for a new

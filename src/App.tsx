@@ -4,6 +4,7 @@ import { DataProvider, useData } from './data/DataProvider'
 import { isConfigured } from './lib/supabase'
 import Layout from './components/Layout'
 import Welcome from './pages/Welcome'
+import NewPassword from './pages/NewPassword'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import CheckIn from './pages/CheckIn'
@@ -74,6 +75,7 @@ function Gate() {
           <Route path="/summary" element={<Summary />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/pray/:id" element={<Pray />} />
+          <Route path="/new-password" element={<NewPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

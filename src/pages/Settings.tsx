@@ -4,18 +4,22 @@ import TimezoneSelect from '../components/TimezoneSelect'
 import PushToggle from '../components/PushToggle'
 import Toggle from '../components/Toggle'
 import LoginCodeCard from '../components/LoginCodeCard'
+import SignInCard from '../components/SignInCard'
+import { realEmail } from '../lib/auth'
 import ErrorText, { errorMessage } from '../components/ErrorText'
 import { deleteMyAccount, downloadBlob, exportMyData } from '../lib/account'
 import { clearPin, hasPin, setPin } from '../lib/pin'
 import { disablePush } from '../lib/push'
 import { shortTime } from '../lib/outcomes'
 import type { Profile } from '../lib/types'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAsync } from '../components/useAsync'
 import { isAppAdmin } from '../lib/admin'
 
 export default function Settings() {
-  const { profile, saveProfile, signOut } = useData()
+  const { profile, saveProfile, signOut, session } = useData()
+  const [params] = useSearchParams()
+  const hasEmail = Boolean(realEmail(session?.user))
   const [name, setName] = useState(profile?.display_name ?? '')
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'Africa/Johannesburg')
   const [saved, setSaved] = useState(false)
@@ -43,6 +47,13 @@ export default function Settings() {
     <div className="page space-y-4">
       <h1 className="h1">Settings</h1>
       <ErrorText error={error} />
+      {params.get('auth') === 'email-changed' && <p className="card border-l-4 border-emerald-500" role="status">✅ Your email is confirmed. Sign in with it and your password on any phone.</p>}
+      {params.get('auth_message') && <p className="card border-l-4 border-amber-400" role="status">{params.get('auth_message')}</p>}
+
+      <section id="sign-in" className="space-y-2">
+        <h2 className="h2 px-1">Sign-in</h2>
+        <SignInCard />
+      </section>
 
       <section className="card space-y-3">
         <h2 className="h2">Profile</h2>
@@ -103,11 +114,14 @@ export default function Settings() {
         <p className="muted">Per-habit reminders (e.g. quiet time at 06:00) are set when you edit a habit.</p>
       </section>
 
-      <section id="login-code" className="space-y-2">
-        <h2 className="h2 px-1">Login code</h2>
-        <p className="muted px-1">There’s no password: your account lives on this phone. A login code lets you open it on a new phone (or after reinstalling). On the new phone choose “I already use Steadfast”.</p>
-        <LoginCodeCard />
-      </section>
+      {!hasEmail && (
+        // The old way, until you've added an email.
+        <section id="login-code" className="space-y-2">
+          <h2 className="h2 px-1">Login code</h2>
+          <p className="muted px-1">Until you’ve added an email, a login code lets you open your account on a new phone. On the new phone choose “I have a login code”.</p>
+          <LoginCodeCard />
+        </section>
+      )}
 
       <PinSettings />
 
@@ -127,9 +141,9 @@ export default function Settings() {
       <section className="card space-y-3">
         <h2 className="h2">Account</h2>
         <button className="btn-secondary w-full" onClick={() => {
-          const warning = profile.has_login_code
-            ? 'Sign out of this phone? You can come back with your login code.'
-            : 'You have no login code yet. If you sign out you can NEVER get back into this account. Sign out anyway?'
+          const warning = hasEmail ? 'Sign out of this phone? Sign back in with your email and password.'
+            : profile.has_login_code ? 'Sign out of this phone? You can come back with your login code.'
+            : 'You have no email or login code yet. If you sign out you can NEVER get back into this account. Sign out anyway?'
           if (confirm(warning)) signOut()
         }}>Sign out</button>
         <DeleteAccount onDeleted={signOut} />

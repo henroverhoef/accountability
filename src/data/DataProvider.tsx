@@ -7,6 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { syncConfirmedEmail } from '../lib/auth'
 import { addDays, DEFAULT_TIMEZONE, localNow } from '../lib/logic'
 import { clearPin } from '../lib/pin'
 import type { Checkin, Habit, Profile } from '../lib/types'
@@ -113,6 +114,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const userId = session?.user.id
+
+  // An email confirmed in Safari (iPhone) shows up here the next time the app opens.
+  useEffect(() => {
+    if (userId) syncConfirmedEmail(session?.user).catch(() => { /* offline: next time */ })
+  }, [userId])
 
   // Keep the on-phone copy up to date.
   useEffect(() => {

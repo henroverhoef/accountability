@@ -115,6 +115,17 @@ choose **I already use Steadfast** and type it in.
 - **Member details**: in a group, tap someone's name to see their shared habits, a
   6-week calendar, and the last two weeks of check-ins with tags and notes (only what
   they share with that group).
+- **Email + password accounts**: new people create an account with their first name, email,
+  a password and their group's code (or a new group), confirm their email with the link
+  Supabase sends, and they're in ("I've confirmed my email" covers iPhones, where the link
+  opens in Safari instead of the installed app). Sign in on any phone with email + password;
+  "Forgot password?" emails a reset link. Older code-based accounts add an email and
+  password under Settings → Sign-in (Home shows a reminder until they do); until then login
+  codes still work. Emails go through the SMTP account set in Supabase (Authentication →
+  Emails); turn **Secure email change** off there, because old accounts' stand-in addresses
+  (`…@login.steadfast.invalid`) can't receive the second confirmation. Set the Site URL and
+  Redirect URLs to the app's address. Email links are read by `handleAuthRedirect()` in
+  `src/lib/auth.ts`.
 - **Quick tip**: shown once after setup, explaining how to install the app and turn on
   notifications (Settings → Help shows it again).
 - **Unused accounts are removed after 30 days**: every night, accounts nobody has used for

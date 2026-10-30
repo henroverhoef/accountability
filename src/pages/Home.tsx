@@ -9,6 +9,7 @@ import QuickTip from '../components/QuickTip'
 import StreakBadge from '../components/StreakBadge'
 import ReplyBox from '../components/ReplyBox'
 import CommitmentCheck from '../components/CommitmentCheck'
+import { realEmail } from '../lib/auth'
 import { prayerMoments } from '../lib/prayer'
 
 function timeAgo(iso: string): string {
@@ -98,9 +99,9 @@ export default function Home() {
         🆘 I need help
       </Link>
 
-      {profile && !profile.has_login_code && (
+      {profile && !realEmail(session?.user) && (
         <Link to="/settings" className="card block border-l-4 border-amber-400 text-sm">
-          🔑 <strong>Save a login code</strong> so you can get back into your account on a new phone. Tap here, then “Login code”.
+          📧 <strong>Add your email and a password</strong> so you can sign in on any phone, without login codes. Tap here.
         </Link>
       )}
 
