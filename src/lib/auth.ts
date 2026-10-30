@@ -86,11 +86,23 @@ export async function addEmailAndPassword(email: string, password: string) {
   await setPassword(password)
   const { error } = await supabase.auth.updateUser({ email: email.trim() }, { emailRedirectTo: appUrl() })
   if (error) throw error
+  await skipStandInConfirmation()
 }
 
 export async function resendEmailChange(email: string) {
   const { error } = await supabase.auth.resend({ type: 'email_change', email: email.trim(), options: { emailRedirectTo: appUrl() } })
   if (error) throw error
+  await skipStandInConfirmation()
+}
+
+/**
+ * A stand-in address can't confirm anything. If Supabase's "Secure email change" asked
+ * it to as well, mark that side done, so the link sent to the new address is enough
+ * (see the standin_email_change migration).
+ */
+async function skipStandInConfirmation() {
+  const { error } = await supabase.rpc('skip_standin_confirmation')
+  if (error) console.warn('Could not skip the stand-in confirmation', error)
 }
 
 /**

@@ -122,8 +122,11 @@ choose **I already use Steadfast** and type it in.
   "Forgot password?" emails a reset link. Older code-based accounts add an email and
   password under Settings → Sign-in (Home shows a reminder until they do); until then login
   codes still work. Emails go through the SMTP account set in Supabase (Authentication →
-  Emails); turn **Secure email change** off there, because old accounts' stand-in addresses
-  (`…@login.steadfast.invalid`) can't receive the second confirmation. Set the Site URL and
+  Emails). Old accounts' stand-in addresses (`…@login.steadfast.invalid`) can't receive
+  email, so after asking for the change the app marks that side as confirmed
+  (`skip_standin_confirmation()`), and the link to the new address is enough. Still turn
+  **Secure email change** off in Supabase, or each switch also sends an email to the
+  stand-in address that bounces back to the sending mailbox. Set the Site URL and
   Redirect URLs to the app's address. Email links are read by `handleAuthRedirect()` in
   `src/lib/auth.ts`.
 - **Quick tip**: shown once after setup, explaining how to install the app and turn on
