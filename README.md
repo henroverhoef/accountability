@@ -159,11 +159,11 @@ choose **I already use Steadfast** and type it in.
   yesterday, per-habit reminders and a wind-down reminder before a bedtime target.
 - **Group feed**: messages to the group (updates, prayer requests, encouragement) and SOS.
   Check-ins are on each member's page; kudos and prayers show on the check-ins themselves.
-  Each message has three small buttons on its time line: 👏 kudos (one tap), 🙏 (the same
-  "pray with intention" pop-up as everywhere: pray now, set aside a moment, add to a prayer
-  time, and a word afterwards) and 💬 a short reply. A cry for help (SOS) gets no 👏. Counts
-  show next to them ("🙏 2 · 👏 1", tap for who). Tapping a message, SOS or a reaction to one
-  opens the feed.
+  Each message has small buttons on its time line: ❤️ (one tap), 👏 kudos (one tap), 🙏 (the
+  same "pray with intention" pop-up as everywhere: pray now, set aside a moment, add to a
+  prayer time, and a word afterwards) and 💬 a short reply. A cry for help (SOS) gets no 👏
+  (a ❤️ is fine). Counts show next to them ("🙏 2 · 👏 1 · ❤️ 3", tap for who). Tapping a
+  message, SOS or a reaction to one opens the feed. Hearts aren't listed on Home.
 - **Personal messages** (✉️ Message on a member, or the word after praying) are only for that
   person by default; tick **Let the group see this too** to encourage them in front of the
   group (it then shows in the feed). Private ones are marked "only you two" in the feed.

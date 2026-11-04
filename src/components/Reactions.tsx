@@ -4,14 +4,15 @@ import PrayerPrompt from './PrayerPrompt'
 import ReplyBox from './ReplyBox'
 import { addPrayerReminder, sendEncouragement, sendPrayerWord, type Encouragement, type FollowUp, type SharedCheckin, type SharedHabit } from '../lib/groups'
 
-// Kudos (👏) and prayers (🙏) are shown as small labels on what they're about: a check-in,
-// a feed message (reply_to), or next to a person's name for "praying for you" in general.
+// Kudos (👏), prayers (🙏) and hearts (❤️, feed messages only) are shown as small labels on
+// what they're about: a check-in, a feed message (reply_to), or next to a person's name for
+// "praying for you" in general.
 
 /** What the reaction pieces need to know about the group. */
 export interface Social {
   groupId: string
   me: string
-  reactions: Encouragement[] // kudos and prayers in this group, newest first
+  reactions: Encouragement[] // kudos, prayers and hearts in this group, newest first
   followUps: FollowUp[] // calls and coffees this week (never the ones about me)
   nameOf: (uid: string) => string
   onSent: () => void
@@ -21,7 +22,7 @@ export function reactionsFor(social: Social, checkinId: string): Encouragement[]
   return social.reactions.filter((r) => r.checkin_id === checkinId)
 }
 
-/** Kudos and prayers on one feed message. */
+/** Kudos, prayers and hearts on one feed message. */
 export function reactionsForMessage(social: Social, messageId: string): Encouragement[] {
   return social.reactions.filter((r) => r.reply_to === messageId)
 }
@@ -59,16 +60,16 @@ export function prayActions(social: Social, p: {
 
 /** Distinct people per kind, in the order they reacted. */
 function people(list: Encouragement[]) {
-  const out = { prayer: [] as string[], kudos: [] as string[] }
+  const out = { prayer: [] as string[], kudos: [] as string[], heart: [] as string[] }
   for (const r of [...list].reverse()) {
-    const arr = r.kind === 'prayer' ? out.prayer : r.kind === 'kudos' ? out.kudos : null
+    const arr = r.kind === 'prayer' ? out.prayer : r.kind === 'kudos' ? out.kudos : r.kind === 'heart' ? out.heart : null
     if (arr && !arr.includes(r.from_user)) arr.push(r.from_user)
   }
   return out
 }
 
 /**
- * "🙏 2 👏 3": how many people are praying / gave kudos. Tap to see who.
+ * "🙏 2 👏 3 ❤️ 1": how many people are praying / gave kudos / loved it. Tap to see who.
  * Renders nothing when there's nothing yet, so it takes no space.
  */
 export function ReactionLabel({ list, social, general = false }: { list: Encouragement[]; social: Social; general?: boolean }) {
@@ -82,11 +83,12 @@ export function ReactionLabel({ list, social, general = false }: { list: Encoura
   }, [open])
 
   const who = people(list)
-  if (who.prayer.length === 0 && who.kudos.length === 0) return null
+  if (who.prayer.length === 0 && who.kudos.length === 0 && who.heart.length === 0) return null
   const names = (ids: string[]) => ids.map(social.nameOf).join(', ')
   const summary = [
     who.prayer.length ? `${who.prayer.length} praying` : '',
     who.kudos.length ? `${who.kudos.length} kudos` : '',
+    who.heart.length ? `${who.heart.length} loved it` : '',
   ].filter(Boolean).join(', ')
 
   return (
@@ -95,11 +97,13 @@ export function ReactionLabel({ list, social, general = false }: { list: Encoura
         className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
         {who.prayer.length > 0 && <span>🙏 {who.prayer.length}</span>}
         {who.kudos.length > 0 && <span>👏 {who.kudos.length}</span>}
+        {who.heart.length > 0 && <span>❤️ {who.heart.length}</span>}
       </button>
       {open && (
         <span role="dialog" className="absolute right-0 top-full z-20 mt-1 block w-max max-w-[16rem] space-y-1 rounded-xl border border-slate-200 bg-white p-2 text-left text-xs font-normal shadow-lg dark:border-slate-700 dark:bg-slate-900">
           {who.prayer.length > 0 && <span className="block">🙏 {general ? 'Praying this week' : 'Praying'}: <strong>{names(who.prayer)}</strong></span>}
           {who.kudos.length > 0 && <span className="block">👏 Kudos: <strong>{names(who.kudos)}</strong></span>}
+          {who.heart.length > 0 && <span className="block">❤️ Loved it: <strong>{names(who.heart)}</strong></span>}
         </span>
       )}
     </span>
@@ -164,28 +168,28 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
 }
 
 /**
- * Under a feed message: "🙏 2 👏 1" (tap for who) and three small buttons. Kudos is one tap;
- * praying opens the same pop-up as everywhere else; 💬 a short reply. No kudos on a cry for
- * help (SOS), and no buttons on your own messages.
+ * Under a feed message: "🙏 2 👏 1 ❤️ 3" (tap for who) and small buttons. ❤️ and kudos are one
+ * tap; praying opens the same pop-up as everywhere else; 💬 a short reply. No kudos on a cry
+ * for help (SOS), but a ❤️ is fine. No buttons on your own messages.
  */
 export function MessageReactions({ e, social, replied = false }: { e: Encouragement; social: Social; replied?: boolean }) {
   const [praying, setPraying] = useState(false)
   const [replying, setReplying] = useState(false)
-  const [sent, setSent] = useState<{ kudos?: boolean; prayer?: boolean }>({})
+  const [sent, setSent] = useState<{ kudos?: boolean; prayer?: boolean; heart?: boolean }>({})
   const list = reactionsForMessage(social, e.id)
   const mine = e.from_user === social.me
   const author = social.nameOf(e.from_user)
-  const done = (kind: 'kudos' | 'prayer') => sent[kind] || list.some((r) => r.kind === kind && r.from_user === social.me)
+  const done = (kind: 'kudos' | 'prayer' | 'heart') => sent[kind] || list.some((r) => r.kind === kind && r.from_user === social.me)
   const snippet = (e.message ?? '').length > 60 ? `${e.message!.slice(0, 60)}…` : e.message ?? ''
   const pray = prayActions(social, {
     toUser: e.from_user, replyTo: e.id, who: author, what: e.kind === 'sos' ? 'request for help' : 'message',
     link: `/groups/${social.groupId}?tab=feed`,
   })
 
-  async function kudos() {
+  async function react(kind: 'kudos' | 'heart') {
     try {
-      await sendEncouragement({ group_id: social.groupId, kind: 'kudos', to_user: e.from_user, reply_to: e.id })
-      setSent((x) => ({ ...x, kudos: true }))
+      await sendEncouragement({ group_id: social.groupId, kind, to_user: e.from_user, reply_to: e.id })
+      setSent((x) => ({ ...x, [kind]: true }))
       social.onSent()
     } catch (err) {
       alert(errorMessage(err))
@@ -200,8 +204,10 @@ export function MessageReactions({ e, social, replied = false }: { e: Encouragem
       <ReactionLabel list={list} social={social} />
       {!mine && (
         <>
+          <button className={`${button} ${done('heart') ? on : off}`} disabled={done('heart')} onClick={() => react('heart')}
+            aria-label={done('heart') ? `You loved ${author}’s message` : `Love ${author}’s message`}>❤️</button>
           {e.kind !== 'sos' && (
-            <button className={`${button} ${done('kudos') ? on : off}`} disabled={done('kudos')} onClick={kudos}
+            <button className={`${button} ${done('kudos') ? on : off}`} disabled={done('kudos')} onClick={() => react('kudos')}
               aria-label={done('kudos') ? `Kudos to ${author}: done` : `Give ${author} kudos`}>👏</button>
           )}
           <button className={`${button} ${done('prayer') ? on : off}`} disabled={done('prayer')} onClick={() => setPraying(true)}

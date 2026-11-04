@@ -368,7 +368,7 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
               : e.reply_to && <ReplyTag e={e} items={items} social={social} nameOf={nameOf} />}
             {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
             <div className="mt-1 flex min-h-8 items-center gap-2">
-              <time className="muted flex-1">{new Date(e.created_at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+              <time className="muted min-w-0 flex-1 truncate text-xs" dateTime={e.created_at}>{feedTime(e.created_at)}</time>
               <MessageReactions e={e} social={social}
                 replied={items.some((x) => x.reply_to === e.id && x.from_user === me && x.kind === 'message' && !x.from_prayer)} />
             </div>
@@ -377,6 +377,13 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
       </ul>
     </div>
   )
+}
+
+/** "11:00" today, "Wed 11:00" before that: short, so the reaction buttons fit beside it. */
+function feedTime(iso: string): string {
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`
 }
 
 /** On a word sent after praying: "🙏 After praying · 🛡️ Purity (Wed, Oct 15)" or "· about “Pray for my exam…”". */

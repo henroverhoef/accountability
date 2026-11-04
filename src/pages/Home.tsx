@@ -26,6 +26,7 @@ const ENCOURAGEMENT_TEXT = {
   sos: { icon: '🆘', text: 'asked for prayer' },
   prayer: { icon: '🙏', text: 'is praying for you' },
   kudos: { icon: '👏', text: 'gave you kudos' },
+  heart: { icon: '❤️', text: 'loved your message' },
   message: { icon: '✉️', text: '' },
 } as const
 

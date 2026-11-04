@@ -76,7 +76,7 @@ export interface Encouragement {
   from_user: string
   to_user: string | null
   checkin_id: string | null
-  kind: 'prayer' | 'message' | 'sos' | 'kudos'
+  kind: 'prayer' | 'message' | 'sos' | 'kudos' | 'heart'
   message: string | null
   topic?: string | null // a prayer for the whole group about one shared habit
   from_prayer?: boolean // a word sent after praying (tagged with what the prayer was about)
@@ -122,9 +122,9 @@ export const listEncouragements = (groupId: string) =>
   unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['message', 'sos'])
     .order('created_at', { ascending: false }).limit(50))
 
-/** Kudos and prayers in a group over the last few weeks (shown as 🙏 2 / 👏 3 labels). */
+/** Kudos, prayers and hearts in a group over the last few weeks (shown as 🙏 2 / 👏 3 / ❤️ 1 labels). */
 export const listReactions = (groupId: string) =>
-  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos'])
+  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos', 'heart'])
     .gte('created_at', new Date(Date.now() - 45 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(1000))
 
 // ---------- "Let your yes be yes" (commitment checks) -------------------------------

@@ -226,7 +226,7 @@ async function supportPrompts(admin: SupabaseClient, vapid: VapidKeys, now: Date
   return sent
 }
 
-/** Someone prayed, gave kudos, sent a message or asked for help: notify the right people. */
+/** Someone prayed, gave kudos, loved a message, sent a message or asked for help: notify the right people. */
 async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string) {
   const { data: e, error } = await admin.from('encouragements').select('*').eq('id', id).single()
   if (error || !e) return { sent: 0, error: 'not found' }
@@ -246,11 +246,13 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
         ? e.to_user ? `${name} is praying for you 🙏` : `${name} prayed for your group 🙏`
         : e.kind === 'kudos'
           ? `${name} gave you kudos 👏`
-          : e.from_prayer
-            ? e.to_user ? `${name} prayed for you and sent you a word 🙏` : `${name} prayed for the group and shared a word 🙏`
-            : e.to_user
-              ? `${name} sent you a message`
-              : `${name} posted a message in your group`
+          : e.kind === 'heart'
+            ? `${name} loved your message ❤️`
+            : e.from_prayer
+              ? e.to_user ? `${name} prayed for you and sent you a word 🙏` : `${name} prayed for the group and shared a word 🙏`
+              : e.to_user
+                ? `${name} sent you a message`
+                : `${name} posted a message in your group`
 
   const now = new Date()
   let sent = 0
