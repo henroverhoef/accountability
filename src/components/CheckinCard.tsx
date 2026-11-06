@@ -42,8 +42,8 @@ export default function CheckinCard({ habit, date, isToday, draft, slips, onChan
       {slips && slips.logs > 0 && (
         <p className="text-sm">
           {slips.lostCount
-            ? <>✋ You logged slips {isToday ? 'today' : 'that day'} and <strong>lost count</strong>.</>
-            : <>✋ You logged <strong>{slipText(slips, habit.unit)}</strong> {isToday ? 'today' : 'that day'}.</>}
+            ? <>✋ {isToday ? 'Today' : 'That day'} you were honest about your slips, and <strong>lost count</strong>.</>
+            : <>✋ {isToday ? 'Today' : 'That day'} you were honest about <strong>{slipText(slips, habit.unit)}</strong>.</>}
         </p>
       )}
 

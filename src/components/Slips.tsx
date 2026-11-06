@@ -133,7 +133,7 @@ function SlipLogger({ habits, slips, onLogged, onClose }: { habits: Habit[]; sli
       <div className="card w-full max-w-md space-y-4 p-5 shadow-2xl">
         {done ? (
           <>
-            <h2 id="slip-title" className="text-xl font-bold">Logged</h2>
+            <h2 id="slip-title" className="text-xl font-bold">It’s in the light now</h2>
             <p className="text-lg font-semibold">{done.text}</p>
             {done.now && <p className="text-sm">Your check-in for today now says <strong>{done.now}</strong>.</p>}
             <blockquote className="rounded-lg bg-slate-100 p-3 text-sm italic dark:bg-slate-800">
@@ -143,7 +143,7 @@ function SlipLogger({ habits, slips, onLogged, onClose }: { habits: Habit[]; sli
             <p className="text-sm">Thank you for being honest. Get up, and keep going.</p>
             <ErrorText error={error} />
             <div className="flex gap-2">
-              <button className="btn-ghost flex-1" disabled={busy} onClick={undo}>Undo</button>
+              <button className="btn-ghost flex-1 text-sm" disabled={busy} onClick={undo}>I tapped this by mistake</button>
               <button className="btn-primary flex-1" disabled={busy} onClick={onClose}>Done</button>
             </div>
           </>
@@ -151,7 +151,7 @@ function SlipLogger({ habits, slips, onLogged, onClose }: { habits: Habit[]; sli
           <>
             <div>
               <h2 id="slip-title" className="text-xl font-bold">✋ I just gave in</h2>
-              <p className="muted text-sm">Honest is better than hidden. Log it, then get up again.</p>
+              <p className="muted text-sm">Honest is better than hidden. Bring it into the light, then get up again.</p>
             </div>
 
             {habits.length > 1 && (
@@ -197,7 +197,7 @@ function SlipLogger({ habits, slips, onLogged, onClose }: { habits: Habit[]; sli
             <ErrorText error={error} />
             <div className="flex gap-2">
               <button className="btn-ghost flex-1" disabled={busy} onClick={onClose}>Cancel</button>
-              <button className="btn-primary flex-1" disabled={busy || !valid} onClick={log}>{busy ? 'Logging…' : 'Log it'}</button>
+              <button className="btn-primary flex-1" disabled={busy || !valid} onClick={log}>{busy ? 'One moment…' : 'Confess'}</button>
             </div>
           </>
         )}
