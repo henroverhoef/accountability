@@ -39,6 +39,7 @@ export interface Habit {
   reminder_time: string | null
   wind_down_minutes: number | null
   question: string | null // for "score out of 10" habits, e.g. "How thankful was I today?"
+  slip_yellow_max: number // habits you're breaking: how many slips a day are still yellow (0 = any is red)
   archived: boolean
   sort_order: number
 }

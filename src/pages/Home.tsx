@@ -9,6 +9,7 @@ import QuickTip from '../components/QuickTip'
 import StreakBadge from '../components/StreakBadge'
 import ReplyBox from '../components/ReplyBox'
 import CommitmentCheck from '../components/CommitmentCheck'
+import SlipsCard from '../components/Slips'
 import { realEmail } from '../lib/auth'
 import { prayerMoments } from '../lib/prayer'
 
@@ -27,6 +28,7 @@ const ENCOURAGEMENT_TEXT = {
   prayer: { icon: '🙏', text: 'is praying for you' },
   kudos: { icon: '👏', text: 'gave you kudos' },
   heart: { icon: '❤️', text: 'loved your message' },
+  slip: { icon: '🙌', text: 'shared something in the feed' },
   message: { icon: '✉️', text: '' },
 } as const
 
@@ -95,6 +97,7 @@ export default function Home() {
 
       {hardStretch && <ReachOut week={weekKey(today)} />}
       <CommitmentCheck />
+      <SlipsCard />
 
       <Link to="/sos" className="btn w-full border-2 border-rose-300 bg-rose-50 py-3 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
         🆘 I need help

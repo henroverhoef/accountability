@@ -170,7 +170,8 @@ export function CheckinReaction({ checkin, habit, name, social }: { checkin: Sha
 /**
  * Under a feed message: "🙏 2 👏 1 ❤️ 3" (tap for who) and small buttons. ❤️ and kudos are one
  * tap; praying opens the same pop-up as everywhere else; 💬 a short reply. No kudos on a cry
- * for help (SOS), but a ❤️ is fine. No buttons on your own messages.
+ * for help (SOS) or on a slip someone was honest about, but a ❤️ is fine. No buttons on your
+ * own messages.
  */
 export function MessageReactions({ e, social, replied = false }: { e: Encouragement; social: Social; replied?: boolean }) {
   const [praying, setPraying] = useState(false)
@@ -182,7 +183,7 @@ export function MessageReactions({ e, social, replied = false }: { e: Encouragem
   const done = (kind: 'kudos' | 'prayer' | 'heart') => sent[kind] || list.some((r) => r.kind === kind && r.from_user === social.me)
   const snippet = (e.message ?? '').length > 60 ? `${e.message!.slice(0, 60)}…` : e.message ?? ''
   const pray = prayActions(social, {
-    toUser: e.from_user, replyTo: e.id, who: author, what: e.kind === 'sos' ? 'request for help' : 'message',
+    toUser: e.from_user, replyTo: e.id, who: author, what: e.kind === 'sos' ? 'request for help' : e.kind === 'slip' ? 'honest moment' : 'message',
     link: `/groups/${social.groupId}?tab=feed`,
   })
 
@@ -206,7 +207,7 @@ export function MessageReactions({ e, social, replied = false }: { e: Encouragem
         <>
           <button className={`${button} ${done('heart') ? on : off}`} disabled={done('heart')} onClick={() => react('heart')}
             aria-label={done('heart') ? `You loved ${author}’s message` : `Love ${author}’s message`}>❤️</button>
-          {e.kind !== 'sos' && (
+          {e.kind !== 'sos' && e.kind !== 'slip' && (
             <button className={`${button} ${done('kudos') ? on : off}`} disabled={done('kudos')} onClick={() => react('kudos')}
               aria-label={done('kudos') ? `Kudos to ${author}: done` : `Give ${author} kudos`}>👏</button>
           )}
@@ -223,7 +224,7 @@ export function MessageReactions({ e, social, replied = false }: { e: Encouragem
           onSent={social.onSent} onClose={() => setReplying(false)} />
       )}
       {praying && (
-        <PrayerPrompt subject={e.kind === 'sos' ? `${author}, who asked for help` : `${author} and what they shared`} who={author}
+        <PrayerPrompt subject={e.kind === 'sos' ? `${author}, who asked for help` : e.kind === 'slip' ? `${author}, who was honest about a struggle` : `${author} and what they shared`} who={author}
           details={snippet ? <span className="italic">“{snippet}”</span> : undefined}
           onPrayed={async () => { await pray.onPrayed(); setSent((x) => ({ ...x, prayer: true })) }}
           onLater={async (at) => { await pray.onLater(at); setSent((x) => ({ ...x, prayer: true })) }}

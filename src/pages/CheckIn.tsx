@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useData } from '../data/DataProvider'
 import CheckinCard from '../components/CheckinCard'
 import ErrorText, { errorMessage } from '../components/ErrorText'
-import { addDays, dayProgress, honestyStreak, isDue } from '../lib/logic'
+import { addDays, dayProgress, honestyStreak, isDue, slipDay, slipOutcome } from '../lib/logic'
+import { useAsync } from '../components/useAsync'
+import { listMySlips } from '../lib/slips'
 import { formatDate } from '../lib/outcomes'
 import { ENCOURAGEMENTS, GRACE_VERSES, pickRandom } from '../lib/verses'
 import type { Checkin } from '../lib/types'
@@ -43,6 +45,23 @@ export default function CheckIn() {
     setError(null)
     // (only when the day changes, not on every save)
   }, [date])
+
+  // Slips logged with "✋ I just gave in" answer a habit you're breaking before you do:
+  // its colour follows the count (you can still change it).
+  const slips = useAsync(() => listMySlips(today, 2), [today])
+  useEffect(() => {
+    if (!slips.data) return
+    setDrafts((prev) => {
+      const next = { ...prev }
+      for (const h of dueHabits) {
+        if (h.type !== 'avoid' || next[h.id]) continue
+        const outcome = slipOutcome(slipDay(slips.data!, h.id, date), h.slip_yellow_max ?? 0)
+        if (outcome) next[h.id] = { habit_id: h.id, date, outcome, value_number: null, value_time: null, tags: [], note: null }
+      }
+      return next
+    })
+    // (once the slips are in, and again for another day)
+  }, [slips.data, date])
 
   const changed = Object.values(drafts).filter((d) => JSON.stringify(pick(d)) !== JSON.stringify(pick(existing[d.habit_id])))
   const answered = dueHabits.filter((h) => drafts[h.id]).length
@@ -126,6 +145,7 @@ export default function CheckIn() {
                 date={date}
                 isToday={date === today}
                 draft={drafts[h.id]}
+                slips={h.type === 'avoid' && slips.data ? slipDay(slips.data, h.id, date) : undefined}
                 onChange={(c) => setDrafts((prev) => ({ ...prev, [h.id]: c }))}
               />
             </li>

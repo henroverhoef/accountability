@@ -40,14 +40,15 @@ export default function HabitEdit() {
         target_time: form.type === 'time' ? form.target_time || '22:30' : null,
         target_value: form.type === 'amount' ? form.target_value : null,
         target_direction: form.type === 'amount' ? form.target_direction || 'at_least' : null,
-        unit: form.type === 'amount' ? form.unit?.trim() || null : null,
+        unit: form.type === 'amount' || form.type === 'avoid' ? form.unit?.trim() || null : null,
+        slip_yellow_max: form.type === 'avoid' ? Math.max(0, Math.round(form.slip_yellow_max || 0)) : 0,
         wind_down_minutes: form.type === 'time' ? form.wind_down_minutes : null,
         question: form.type === 'scale' ? form.question?.trim() || null : null,
       }
       // Never send read-only columns back to the database.
-      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, question } = clean
+      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, question, slip_yellow_max } = clean
       const fields = {
-        name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes,
+        name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, slip_yellow_max,
         // only score habits have a question
         ...(type === 'scale' ? { question } : {}),
       } as HabitDraft
@@ -149,6 +150,26 @@ export default function HabitEdit() {
           <input id="question" className="input" maxLength={120} placeholder="How thankful was I today?"
             value={form.question ?? ''} onChange={(e) => set({ question: e.target.value })} />
           <p className="muted mt-1">7–10 counts as a strong day (green), 4–6 mixed (amber), 1–3 hard (red).</p>
+        </div>
+      )}
+
+      {form.type === 'avoid' && (
+        // For "✋ I just gave in" on Home: what a slip counts in, and how many are still yellow.
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="slip-unit" className="label">Count slips in</label>
+            <input id="slip-unit" className="input" maxLength={20} placeholder="times" value={form.unit ?? ''} onChange={(e) => set({ unit: e.target.value })} />
+          </div>
+          <div>
+            <label htmlFor="slip-yellow" className="label">Yellow up to</label>
+            <input id="slip-yellow" type="number" min={0} max={1000} className="input" value={form.slip_yellow_max ?? 0}
+              onChange={(e) => set({ slip_yellow_max: Number(e.target.value) })} />
+          </div>
+          <p className="muted col-span-2 text-sm">
+            E.g. “videos” or “minutes”. {(form.slip_yellow_max ?? 0) > 0
+              ? `Up to ${form.slip_yellow_max} a day is yellow, more is red.`
+              : 'Any slip makes the day red: it’s a habit you don’t want in your life. Raise this to allow some as yellow.'}
+          </p>
         </div>
       )}
 

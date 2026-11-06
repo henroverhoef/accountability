@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 
 /** Everything the database will show you about yourself, as one JSON file. */
 export async function exportMyData(): Promise<Blob> {
-  const tables = ['profiles', 'habits', 'checkins', 'habit_shares', 'groups', 'group_members', 'encouragements', 'push_subscriptions'] as const
+  const tables = ['profiles', 'habits', 'checkins', 'habit_slips', 'commitment_checks', 'habit_shares', 'groups', 'group_members', 'encouragements', 'push_subscriptions'] as const
   const out: Record<string, unknown> = { exported_at: new Date().toISOString(), app: 'Steadfast' }
   for (const t of tables) {
     const { data, error } = await supabase.from(t).select('*')

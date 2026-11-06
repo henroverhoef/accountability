@@ -330,6 +330,9 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const nameOf = (uid: string | null) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
+  // Newest activity first (a slip card counts from its last update); an emptied card is hidden.
+  const shown = items.filter((e) => e.kind !== 'slip' || e.message)
+    .sort((a, b) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at))
 
   async function post() {
     setError(null)
@@ -355,9 +358,22 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
         <ErrorText error={error} />
       </div>
 
-      {items.length === 0 && <p className="muted text-center">Nothing here yet.</p>}
+      {shown.length === 0 && <p className="muted text-center">Nothing here yet.</p>}
       <ul className="space-y-2">
-        {items.map((e) => (
+        {shown.map((e) => e.kind === 'slip' ? (
+          // One card per person, habit and day: the count updates as they log, so it moves up.
+          <li key={e.id} className="card text-sm">
+            <div>
+              <span aria-hidden>🙌</span> <strong>{nameOf(e.from_user)}</strong> was honest{e.slip_date && dayWord(e.slip_date) ? ` ${dayWord(e.slip_date)}` : ''}
+            </div>
+            <p className="mt-1 font-medium">{e.message}</p>
+            <div className="mt-1 flex min-h-8 items-center gap-2">
+              <time className="muted min-w-0 flex-1 truncate text-xs" dateTime={e.updated_at ?? e.created_at}>{feedTime(e.updated_at ?? e.created_at)}</time>
+              <MessageReactions e={e} social={social}
+                replied={items.some((x) => x.reply_to === e.id && x.from_user === me && x.kind === 'message' && !x.from_prayer)} />
+            </div>
+          </li>
+        ) : (
           <li key={e.id} className={`card text-sm ${e.kind === 'sos' ? 'ring-2 ring-rose-400' : ''}`}>
             <div>
               <span aria-hidden>{e.kind === 'sos' ? '🆘' : e.from_prayer ? '🙏' : e.reply_to ? '💬' : '✉️'}</span> <strong>{nameOf(e.from_user)}</strong>{' '}
@@ -377,6 +393,14 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
       </ul>
     </div>
   )
+}
+
+/** For a slip card: "today", "yesterday", or "on Wed, Nov 4". */
+function dayWord(date: string): string {
+  const today = new Date().toLocaleDateString('en-CA')
+  if (date === today) return 'today'
+  if (date === addDays(today, -1)) return 'yesterday'
+  return `on ${formatDate(date)}`
 }
 
 /** "11:00" today, "Wed 11:00" before that: short, so the reaction buttons fit beside it. */

@@ -76,12 +76,15 @@ export interface Encouragement {
   from_user: string
   to_user: string | null
   checkin_id: string | null
-  kind: 'prayer' | 'message' | 'sos' | 'kudos' | 'heart'
+  kind: 'prayer' | 'message' | 'sos' | 'kudos' | 'heart' | 'slip'
   message: string | null
   topic?: string | null // a prayer for the whole group about one shared habit
   from_prayer?: boolean // a word sent after praying (tagged with what the prayer was about)
   reply_to?: string | null // a kudos / prayer / word / reply about this encouragement
   group_sees?: boolean // a message to one person that the group may read too
+  habit_id?: string | null // a slip card: whose habit, which day, last updated
+  slip_date?: string | null
+  updated_at?: string | null
   created_at: string
 }
 
@@ -117,9 +120,9 @@ export const renameGroup = (groupId: string, name: string) => unwrap(supabase.fr
 export const removeMember = (groupId: string, userId: string) =>
   unwrap(supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId))
 
-/** The group feed: messages and SOS (kudos and prayers show on the check-ins instead). */
+/** The group feed: messages, SOS and slip cards (kudos and prayers show on what they're about instead). */
 export const listEncouragements = (groupId: string) =>
-  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['message', 'sos'])
+  unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['message', 'sos', 'slip'])
     .order('created_at', { ascending: false }).limit(50))
 
 /** Kudos, prayers and hearts in a group over the last few weeks (shown as 🙏 2 / 👏 3 / ❤️ 1 labels). */

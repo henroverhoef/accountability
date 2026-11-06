@@ -214,6 +214,17 @@ choose **I already use Steadfast** and type it in.
   notification goes to the person and the group (not naming the habit; not on top of a
   support prompt). Habits you *avoid* and scores out of 10 are never asked about this way.
   The rule is in `supabase/functions/_shared/logic/commitment.ts`.
+- **"✋ I just gave in"** (habits you're breaking): a button on Home logs a slip the moment it
+  happens: pick the habit, then +1 / +2 / +5 / +10, another number, or "I lost count". Each
+  avoid habit counts in its own unit ("videos", "minutes"; set on the habit) and by default
+  any slip makes the day red; "Yellow up to N" on the habit allows some as yellow. Home shows
+  today's count next to yesterday and a usual day; the evening check-in starts from it
+  ("✋ You logged 7 videos today" → Slipped), and a check-in already done can't stay better
+  than what you log afterwards (Undo puts it back). Your group sees ONE card per habit per day
+  in the feed ("🙌 John was honest today · 📵 Short-form video: 7 videos"), updated as you log,
+  with one notification ("John shared something in the feed") for the day's first slip; only
+  for habits shared with their result, and never the individual logs (`habit_slips` is yours
+  alone). The group can ❤️, pray or reply, but not give kudos on it.
 - **Following up**: while a member has that note (a hard stretch, or no check-in for 3+ days),
   the others get **📞 I've called …** and **☕ I've had coffee with …** buttons and see who has
   (e.g. "☕ Jared had coffee with Jesse · yesterday", or "Nobody has … this week yet"). Several

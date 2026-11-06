@@ -4,7 +4,7 @@ export type HabitDraft = Omit<Habit, 'id' | 'user_id' | 'start_date' | 'sort_ord
 
 const everyDay = [0, 1, 2, 3, 4, 5, 6]
 
-const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes' | 'question'> = {
+const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes' | 'question' | 'slip_yellow_max'> = {
   schedule_days: everyDay,
   target_value: null,
   target_direction: null,
@@ -16,6 +16,7 @@ const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_directio
   reminder_time: null,
   wind_down_minutes: null,
   question: null,
+  slip_yellow_max: 0,
 }
 
 export const TEMPLATES: { key: string; description: string; habit: HabitDraft }[] = [

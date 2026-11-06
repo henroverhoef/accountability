@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { evaluateAmount, evaluateScale, evaluateTime, type Outcome } from '../lib/logic'
+import { evaluateAmount, evaluateScale, evaluateTime, slipText, type Outcome, type SlipDay } from '../lib/logic'
 import { outcomeLabel, OUTCOME_STYLES, shortTime, tappableOutcomes } from '../lib/outcomes'
 import type { Checkin, Habit } from '../lib/types'
 
@@ -9,11 +9,12 @@ interface Props {
   /** Checking in for today (not catching up on last night). */
   isToday: boolean
   draft: Checkin | undefined
+  slips?: SlipDay // a habit you're breaking: what you logged with "✋ I just gave in" that day
   onChange: (c: Checkin) => void
 }
 
 /** One habit on the check-in screen: answer with one or two taps, details optional. */
-export default function CheckinCard({ habit, date, isToday, draft, onChange }: Props) {
+export default function CheckinCard({ habit, date, isToday, draft, slips, onChange }: Props) {
   const [open, setOpen] = useState(Boolean(draft?.note || draft?.tags.length))
 
   const blank: Checkin = { habit_id: habit.id, date, outcome: 'good', value_number: null, value_time: null, tags: [], note: null }
@@ -36,6 +37,14 @@ export default function CheckinCard({ habit, date, isToday, draft, onChange }: P
             <OutcomeButton key={o} outcome={o} label={outcomeLabel(habit, o)} selected={draft?.outcome === o} onClick={() => update({ outcome: o })} />
           ))}
         </div>
+      )}
+
+      {slips && slips.logs > 0 && (
+        <p className="text-sm">
+          {slips.lostCount
+            ? <>✋ You logged slips {isToday ? 'today' : 'that day'} and <strong>lost count</strong>.</>
+            : <>✋ You logged <strong>{slipText(slips, habit.unit)}</strong> {isToday ? 'today' : 'that day'}.</>}
+        </p>
       )}
 
       {habit.type === 'time' && <TimeInput habit={habit} isToday={isToday} draft={draft} update={update} />}

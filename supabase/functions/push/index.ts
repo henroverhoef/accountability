@@ -226,7 +226,21 @@ async function supportPrompts(admin: SupabaseClient, vapid: VapidKeys, now: Date
   return sent
 }
 
-/** Someone prayed, gave kudos, loved a message, sent a message or asked for help: notify the right people. */
+/** What a notification about an encouragement says. A slip card never names the habit. */
+function notificationText(e: { kind: string; to_user: string | null; from_prayer?: boolean }, name: string): string {
+  if (e.kind === 'slip') return `${name} shared something in the feed`
+  if (e.kind === 'sos') return `${name} is asking for prayer and support right now`
+  if (e.kind === 'prayer') return e.to_user ? `${name} is praying for you 🙏` : `${name} prayed for your group 🙏`
+  if (e.kind === 'kudos') return `${name} gave you kudos 👏`
+  if (e.kind === 'heart') return `${name} loved your message ❤️`
+  if (e.from_prayer) return e.to_user ? `${name} prayed for you and sent you a word 🙏` : `${name} prayed for the group and shared a word 🙏`
+  return e.to_user ? `${name} sent you a message` : `${name} posted a message in your group`
+}
+
+/**
+ * Someone prayed, gave kudos, loved a message, sent a message, asked for help, or was honest
+ * about a slip (the day's first, for that habit): notify the right people.
+ */
 async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string) {
   const { data: e, error } = await admin.from('encouragements').select('*').eq('id', id).single()
   if (error || !e) return { sent: 0, error: 'not found' }
@@ -239,20 +253,7 @@ async function encouragement(admin: SupabaseClient, vapid: VapidKeys, id: string
   const name = byId.get(e.from_user)?.display_name || 'Someone'
 
   // Keep the text generic: it may show on a lock screen.
-  const body =
-    e.kind === 'sos'
-      ? `${name} is asking for prayer and support right now`
-      : e.kind === 'prayer'
-        ? e.to_user ? `${name} is praying for you 🙏` : `${name} prayed for your group 🙏`
-        : e.kind === 'kudos'
-          ? `${name} gave you kudos 👏`
-          : e.kind === 'heart'
-            ? `${name} loved your message ❤️`
-            : e.from_prayer
-              ? e.to_user ? `${name} prayed for you and sent you a word 🙏` : `${name} prayed for the group and shared a word 🙏`
-              : e.to_user
-                ? `${name} sent you a message`
-                : `${name} posted a message in your group`
+  const body = notificationText(e, name)
 
   const now = new Date()
   let sent = 0
