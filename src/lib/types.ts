@@ -32,7 +32,8 @@ export interface Habit {
   target_value: number | null
   target_direction: 'at_least' | 'at_most' | null
   target_time: string | null
-  grace_minutes: number
+  grace_minutes: number // time targets: minutes late that are still yellow
+  amount_grace: number // amount targets: how far off the target is still yellow
   unit: string | null
   outcome_options: OutcomeLabels
   tags: string[]

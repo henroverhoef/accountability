@@ -6,7 +6,7 @@ export const DEFAULT_LABELS: Record<HabitType, Partial<Record<Outcome, string>>>
   avoid: { good: 'Clean', mid: 'Struggled', bad: 'Slipped' },
   done: { good: 'Done', mid: 'Partly', bad: 'Skipped' },
   time: { good: 'On time', mid: 'Within grace', bad: 'Late' },
-  amount: { good: 'Target met', bad: 'Missed target' },
+  amount: { good: 'Target met', mid: 'Within grace', bad: 'Missed target' },
   scale: { good: 'Strong (7–10)', mid: 'Mixed (4–6)', bad: 'Hard (1–3)' },
 }
 
@@ -23,11 +23,12 @@ export function outcomeLabel(habit: Pick<Habit, 'type' | 'outcome_options'>, out
 }
 
 /**
- * Do this habit's answers come in three levels (green / amber / red)? A time target only
- * with grace minutes (a group's copy doesn't say, so it may).
+ * Do this habit's answers come in three levels (green / amber / red)? A time or amount
+ * target only with a grace (a group's copy doesn't say, so it may).
  */
-export function hasMidOutcome(habit: { type: HabitType; grace_minutes?: number | null }): boolean {
+export function hasMidOutcome(habit: { type: HabitType; grace_minutes?: number | null; amount_grace?: number | null }): boolean {
   if (habit.type === 'time') return habit.grace_minutes === undefined || (habit.grace_minutes ?? 0) > 0
+  if (habit.type === 'amount') return habit.amount_grace === undefined || (habit.amount_grace ?? 0) > 0
   return habit.type === 'avoid' || habit.type === 'done' || habit.type === 'scale'
 }
 

@@ -4,12 +4,13 @@ export type HabitDraft = Omit<Habit, 'id' | 'user_id' | 'start_date' | 'sort_ord
 
 const everyDay = [0, 1, 2, 3, 4, 5, 6]
 
-const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes' | 'question' | 'slip_yellow_max'> = {
+const base: Pick<HabitDraft, 'schedule_days' | 'target_value' | 'target_direction' | 'target_time' | 'grace_minutes' | 'amount_grace' | 'unit' | 'outcome_options' | 'tags' | 'reminder_time' | 'wind_down_minutes' | 'question' | 'slip_yellow_max'> = {
   schedule_days: everyDay,
   target_value: null,
   target_direction: null,
   target_time: null,
   grace_minutes: 0,
+  amount_grace: 0,
   unit: null,
   outcome_options: {},
   tags: [],

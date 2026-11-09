@@ -48,15 +48,19 @@ export function evaluateTime(actual: string, target: string, graceMinutes = 0): 
   return diff <= 0 ? 'good' : diff <= graceMinutes ? 'mid' : 'bad'
 }
 
-/** Amount target (e.g. "at least 1 chapter", "at most 30 minutes"). */
+/**
+ * Amount target (e.g. "at least 3 chapters", "at most 30 minutes"): met is green, within
+ * `grace` of it amber (at least 3, grace 1: 2 chapters), further off red.
+ */
 export function evaluateAmount(
   value: number,
   target: number | null | undefined,
   direction: 'at_least' | 'at_most' | null | undefined,
+  grace = 0,
 ): Outcome {
   if (target === null || target === undefined) return 'good'
-  if (direction === 'at_most') return value <= target ? 'good' : 'bad'
-  return value >= target ? 'good' : 'bad'
+  const short = direction === 'at_most' ? value - target : target - value // how far off the target
+  return short <= 0 ? 'good' : short <= grace ? 'mid' : 'bad'
 }
 
 /**

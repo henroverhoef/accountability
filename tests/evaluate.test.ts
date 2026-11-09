@@ -42,6 +42,23 @@ describe('evaluateAmount', () => {
   it('no target means any entry counts', () => {
     expect(evaluateAmount(0, null, null)).toBe('good')
   })
+  it('within the grace of the target is amber, further off red', () => {
+    // At least 3 chapters, grace 1
+    expect(evaluateAmount(3, 3, 'at_least', 1)).toBe('good')
+    expect(evaluateAmount(2, 3, 'at_least', 1)).toBe('mid')
+    expect(evaluateAmount(1, 3, 'at_least', 1)).toBe('bad')
+    // At most 30 minutes, grace 10
+    expect(evaluateAmount(35, 30, 'at_most', 10)).toBe('mid')
+    expect(evaluateAmount(40, 30, 'at_most', 10)).toBe('mid')
+    expect(evaluateAmount(41, 30, 'at_most', 10)).toBe('bad')
+    // Decimals: at least 2 litres, grace 0.5
+    expect(evaluateAmount(1.5, 2, 'at_least', 0.5)).toBe('mid')
+    expect(evaluateAmount(1.4, 2, 'at_least', 0.5)).toBe('bad')
+  })
+  it('no grace (the default): met or not', () => {
+    expect(evaluateAmount(2, 3, 'at_least')).toBe('bad')
+    expect(evaluateAmount(2, 3, 'at_least', 0)).toBe('bad')
+  })
 })
 
 describe('evaluateScale (score out of 10)', () => {

@@ -41,14 +41,15 @@ export default function HabitEdit() {
         target_value: form.type === 'amount' ? form.target_value : null,
         target_direction: form.type === 'amount' ? form.target_direction || 'at_least' : null,
         unit: form.type === 'amount' || form.type === 'avoid' ? form.unit?.trim() || null : null,
+        amount_grace: form.type === 'amount' ? Math.max(0, Number(form.amount_grace) || 0) : 0,
         slip_yellow_max: form.type === 'avoid' ? Math.max(0, Math.round(form.slip_yellow_max || 0)) : 0,
         wind_down_minutes: form.type === 'time' ? form.wind_down_minutes : null,
         question: form.type === 'scale' ? form.question?.trim() || null : null,
       }
       // Never send read-only columns back to the database.
-      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, question, slip_yellow_max } = clean
+      const { name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, amount_grace, unit, outcome_options, tags, reminder_time, wind_down_minutes, question, slip_yellow_max } = clean
       const fields = {
-        name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, unit, outcome_options, tags, reminder_time, wind_down_minutes, slip_yellow_max,
+        name, icon, type, schedule_days, target_value, target_direction, target_time, grace_minutes, amount_grace, unit, outcome_options, tags, reminder_time, wind_down_minutes, slip_yellow_max,
         // only score habits have a question
         ...(type === 'scale' ? { question } : {}),
       } as HabitDraft
@@ -190,6 +191,12 @@ export default function HabitEdit() {
             <label htmlFor="unit" className="label">Unit</label>
             <input id="unit" className="input" maxLength={20} placeholder="chapters" value={form.unit ?? ''} onChange={(e) => set({ unit: e.target.value })} />
           </div>
+          <div className="col-span-3">
+            <label htmlFor="amount-grace" className="label">Grace (optional)</label>
+            <input id="amount-grace" type="number" min={0} step="any" className="input" value={form.amount_grace ?? 0}
+              onChange={(e) => set({ amount_grace: e.target.value === '' ? 0 : Number(e.target.value) })} />
+            <p className="muted mt-1 text-sm">{amountGraceHint(form)}</p>
+          </div>
         </div>
       )}
 
@@ -264,4 +271,17 @@ export default function HabitEdit() {
       )}
     </form>
   )
+}
+
+/** "At least 3 chapters is green. Down to 2 chapters is yellow, less is red." */
+function amountGraceHint(form: HabitDraft): string {
+  const grace = Number(form.amount_grace) || 0
+  const target = form.target_value
+  const unit = form.unit?.trim() ? ` ${form.unit.trim()}` : ''
+  const atMost = form.target_direction === 'at_most'
+  if (target === null || target === undefined) return 'How far off the target still counts as yellow instead of red.'
+  const met = `${atMost ? 'At most' : 'At least'} ${target}${unit} is green.`
+  if (grace <= 0) return `${met} Anything else is red. Add a grace to allow some as yellow.`
+  const edge = Math.round((atMost ? target + grace : target - grace) * 100) / 100
+  return `${met} ${atMost ? 'Up to' : 'Down to'} ${edge}${unit} is yellow, ${atMost ? 'more' : 'less'} is red.`
 }

@@ -128,7 +128,7 @@ function TimeInput({ habit, isToday, draft, update }: { habit: Habit; isToday: b
 
 function AmountInput({ habit, draft, update }: { habit: Habit; draft?: Checkin; update: (c: Partial<Checkin>) => void }) {
   const [value, setValue] = useState<number>(draft?.value_number ?? habit.target_value ?? 0)
-  const log = (v: number) => update({ value_number: v, outcome: evaluateAmount(v, habit.target_value, habit.target_direction) })
+  const log = (v: number) => update({ value_number: v, outcome: evaluateAmount(v, habit.target_value, habit.target_direction, habit.amount_grace ?? 0) })
   const set = (v: number) => { const n = Math.max(0, v); setValue(n); if (draft) log(n) }
   return (
     <div className="flex items-center gap-2">
