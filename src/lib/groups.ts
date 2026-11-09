@@ -130,6 +130,26 @@ export const listReactions = (groupId: string) =>
   unwrap<Encouragement[]>(supabase.from('encouragements').select('*').eq('group_id', groupId).in('kind', ['prayer', 'kudos', 'heart'])
     .gte('created_at', new Date(Date.now() - 45 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(1000))
 
+// ---------- "I've reached out" on a cry for help ------------------------------------
+// Everyone in the group sees who has, except the person who sent the SOS (RLS).
+
+export interface SosResponse {
+  id: string
+  sos_id: string
+  group_id: string
+  from_user: string
+  created_at: string
+}
+
+export const listSosResponses = (groupId: string) =>
+  unwrap<SosResponse[]>(supabase.from('sos_responses').select('*').eq('group_id', groupId)
+    .gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString()).order('created_at'))
+
+export const addSosResponse = (sosId: string, groupId: string) =>
+  unwrap(supabase.from('sos_responses').insert({ sos_id: sosId, group_id: groupId }))
+
+export const removeSosResponse = (id: string) => unwrap(supabase.from('sos_responses').delete().eq('id', id))
+
 // ---------- "Let your yes be yes" (commitment checks) -------------------------------
 // Your honest answer when a habit you committed to has been hard to keep. Private to
 // you (RLS); sharing what you'll change with a group is a normal feed message.

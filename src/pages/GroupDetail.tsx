@@ -11,8 +11,8 @@ import WhoSees from '../components/WhoSees'
 import FollowUps from '../components/FollowUps'
 import { CheckinReaction, generalPrayersFor, MessageReactions, prayActions, ReactionLabel, reactionsFor, type Social } from '../components/Reactions'
 import {
-  getOverview, inviteLink, listEncouragements, listFollowUps, listMyShares, listReactions, regenerateCode, removeMember, renameGroup, sendEncouragement, setShare,
-  type Encouragement, type FollowUp, type GroupMember, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
+  addSosResponse, getOverview, inviteLink, listEncouragements, listFollowUps, listMyShares, listReactions, listSosResponses, regenerateCode, removeSosResponse, removeMember, renameGroup, sendEncouragement, setShare,
+  type Encouragement, type FollowUp, type GroupMember, type SosResponse, type GroupOverview, type SharedCheckin, type SharedHabit, type Visibility,
 } from '../lib/groups'
 import { addDays, daysBetween, habitStreak, strugglingToCommit, supportReason, type CheckinLike } from '../lib/logic'
 import { describeAnswer, formatDate, OUTCOME_STYLES } from '../lib/outcomes'
@@ -28,6 +28,7 @@ export default function GroupDetail() {
   const feed = useAsync(() => listEncouragements(id), [id])
   const reactions = useAsync(() => listReactions(id), [id])
   const followUps = useAsync(() => listFollowUps(id), [id])
+  const sosResponses = useAsync(() => listSosResponses(id), [id])
   // The tab lives in the address (#/groups/…?tab=feed), so notifications can open the feed.
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'members'
@@ -35,16 +36,16 @@ export default function GroupDetail() {
 
   // Coming back to the app (e.g. from a notification): show what's new.
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload(); reactions.reload(); followUps.reload() } }
+    const onVisible = () => { if (document.visibilityState === 'visible') { overview.reload(); feed.reload(); reactions.reload(); followUps.reload(); sosResponses.reload() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [overview.reload, feed.reload, reactions.reload, followUps.reload])
+  }, [overview.reload, feed.reload, reactions.reload, followUps.reload, sosResponses.reload])
 
   if (overview.error) return <div className="page"><ErrorText error={overview.error} /><Link to="/groups" className="btn-secondary mt-4">Back</Link></div>
   if (!overview.data) return <div className="page muted">Loading…</div>
   const o = overview.data
 
-  const refresh = () => { overview.reload(); feed.reload(); reactions.reload(); followUps.reload() }
+  const refresh = () => { overview.reload(); feed.reload(); reactions.reload(); followUps.reload(); sosResponses.reload() }
   const social = makeSocial(o, me, reactions.data ?? [], refresh, followUps.data ?? [])
 
   return (
@@ -67,7 +68,7 @@ export default function GroupDetail() {
         </ul>
       )}
       {tab === 'overview' && <HabitPot o={o} social={social} />}
-      {tab === 'feed' && <Feed o={o} items={feed.data ?? []} me={me} social={social} onChange={refresh} />}
+      {tab === 'feed' && <Feed o={o} items={feed.data ?? []} responses={sosResponses.data ?? []} me={me} social={social} onChange={refresh} />}
       {tab === 'sharing' && <MySharing groupId={id} onChange={overview.reload} />}
       {tab === 'invite' && <Invite o={o} me={me} onChange={overview.reload} />}
     </div>
@@ -326,7 +327,9 @@ export function EncourageButtons({ social, toUser, name }: { social: Social; toU
 // as small 🙏/👏 labels on what they're about (a check-in, or a message here), so the
 // messages stay visible.
 
-function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Encouragement[]; me: string; social: Social; onChange: () => void }) {
+function Feed({ o, items, responses, me, social, onChange }: {
+  o: GroupOverview; items: Encouragement[]; responses: SosResponse[]; me: string; social: Social; onChange: () => void
+}) {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const nameOf = (uid: string | null) => (uid === me ? 'You' : o.members.find((m) => m.user_id === uid)?.display_name || 'A former member')
@@ -383,6 +386,9 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
             {e.from_prayer ? <PrayerTag o={o} e={e} items={items} nameOf={nameOf} />
               : e.reply_to && <ReplyTag e={e} items={items} social={social} nameOf={nameOf} />}
             {e.message && <p className="mt-1 whitespace-pre-wrap">{e.message}</p>}
+            {e.kind === 'sos' && e.from_user !== me && (
+              <ReachedOut e={e} responses={responses.filter((r) => r.sos_id === e.id)} me={me} nameOf={nameOf} onChange={onChange} />
+            )}
             <div className="mt-1 flex min-h-8 items-center gap-2">
               <time className="muted min-w-0 flex-1 truncate text-xs" dateTime={e.created_at}>{feedTime(e.created_at)}</time>
               <MessageReactions e={e} social={social}
@@ -391,6 +397,44 @@ function Feed({ o, items, me, social, onChange }: { o: GroupOverview; items: Enc
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/**
+ * On a cry for help: "📞 I've reached out", and who already has, so nobody assumes someone
+ * else did. The person who asked never sees this (the database doesn't send it to them).
+ */
+function ReachedOut({ e, responses, me, nameOf, onChange }: {
+  e: Encouragement; responses: SosResponse[]; me: string; nameOf: (uid: string | null) => string; onChange: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const mine = responses.find((r) => r.from_user === me)
+
+  async function toggle() {
+    if (mine && !confirm('Remove “You reached out”?')) return
+    setBusy(true)
+    try {
+      await (mine ? removeSosResponse(mine.id) : addSosResponse(e.id, e.group_id))
+      onChange()
+    } catch (err) {
+      alert(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <button className={`min-h-8 rounded-full px-3 text-xs font-semibold ${mine
+        ? 'bg-emerald-100 text-emerald-950 ring-2 ring-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-50'
+        : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'}`}
+        aria-pressed={Boolean(mine)} disabled={busy} onClick={toggle}>
+        {mine ? '✓ You reached out' : '📞 I’ve reached out'}
+      </button>
+      <span className="muted text-xs">
+        {responses.length > 0 ? `Reached out: ${responses.map((r) => nameOf(r.from_user)).join(', ')}` : 'Nobody has said they reached out yet'}
+      </span>
     </div>
   )
 }

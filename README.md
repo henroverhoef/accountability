@@ -165,6 +165,10 @@ choose **I already use Steadfast** and type it in.
   prayer time, and a word afterwards) and 💬 a short reply. A cry for help (SOS) gets no 👏
   (a ❤️ is fine). Counts show next to them ("🙏 2 · 👏 1 · ❤️ 3", tap for who). Tapping a
   message, SOS or a reaction to one opens the feed. Hearts aren't listed on Home.
+- **"I've reached out" on an SOS**: a small **📞 I've reached out** button on someone else's cry
+  for help in the feed, with "Reached out: Jared, You" next to it, so nobody assumes someone
+  else did. Tap it again to undo. Everyone in the group sees it except the person who sent the
+  SOS (`sos_responses` RLS).
 - **Personal messages** (✉️ Message on a member, or the word after praying) are only for that
   person by default; tick **Let the group see this too** to encourage them in front of the
   group (it then shows in the feed). Private ones are marked "only you two" in the feed.
