@@ -205,6 +205,11 @@ choose **I already use Steadfast** and type it in.
   and encourages the person to reach out too, with at most one notification a week (at noon).
   No score is ever shown. The group's prompt only uses what that person shares with the
   group. The rule is in `supabase/functions/_shared/logic/support.ts`.
+- **Archiving and restoring a habit**: archived habits aren't checked in, counted or asked
+  about. Restoring one is a fresh start: it counts from the day it's restored (the database
+  sets its start date, `habit_restored` migration), so the archived days aren't read as missed
+  check-ins in streaks, the calendar, or the support and commitment checks. Its earlier
+  check-ins stay.
 - **"Let your yes be yes"** (commitment checks): when one habit you committed to *do*
   (done / bedtime / amount habits) has been kept less than half the time over the last two
   weeks, Home asks you about it honestly, whatever your other habits look like. Is this what the
