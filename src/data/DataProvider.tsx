@@ -37,6 +37,7 @@ interface DataContextValue {
   deleteHabit: (id: string) => Promise<void>
   /** Returns 'saved', or 'queued' if we're offline and it will sync later. */
   saveCheckins: (rows: Checkin[]) => Promise<'saved' | 'queued'>
+  undoCheckins: (date: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -291,6 +292,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [userId],
   )
 
+  // Undo a day's check-in (today or last night, e.g. checked in on the wrong day): its answers
+  // go, here and on the server, including any still waiting to sync. Needs a connection.
+  const undoCheckins = useCallback(
+    async (date: string) => {
+      if (!userId) return
+      const { error } = await supabase.from('checkins').delete().eq('user_id', userId).eq('date', date)
+      if (error) throw isNetworkError(error) ? new Error('You’re offline. Undoing a check-in needs a connection.') : error
+      const queue = loadQueue(userId).filter((c) => c.date !== date)
+      setQueue(userId, queue)
+      setPendingSync(queue.length)
+      setCheckins((prev) => prev.filter((c) => c.date !== date))
+    },
+    [userId],
+  )
+
   const signOut = useCallback(async () => {
     clearLocalData()
     clearPin()
@@ -318,6 +334,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateHabit,
     deleteHabit,
     saveCheckins,
+    undoCheckins,
     signOut,
   }
 

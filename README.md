@@ -100,6 +100,11 @@ choose **I already use Steadfast** and type it in.
 - **Missed last night?** Home shows "Last night's check-in is still open" until midnight,
   and a morning reminder (07:30 by default) points to it. Catch-up check-ins appear in the
   group feed marked "caught up next morning". Anything older can't be filled in.
+- **Undo a check-in** (today or last night): "↩︎ Undo today's check-in" on the check-in page
+  and on the thank-you screen after saving removes that day's answers (after a confirm), e.g.
+  when you checked in on the wrong day; after undoing today's, "Check in for last night
+  instead" switches days. Older check-ins can't be removed (the database only allows undoing
+  today or last night, the same days you can change one). Needs a connection.
 - **Bedtime-type habits** start at the current time on today's check-in, so you just tap **Log** as you go to bed (catching up on last night starts at the target time instead).
 - **Amount targets with an optional grace** (default 0): met is green, within the grace of the target yellow ("Within grace"), further off red. E.g. at least 3 chapters with grace 1: 2 chapters is yellow, 1 red; at most 30 minutes with grace 10: 40 is yellow, 41 red. Decimals work (at least 2 litres, grace 0.5).
 - **Time targets with grace minutes**: at or before the target is green, within the grace minutes after it yellow ("Within grace"), later red. E.g. target 22:00 with 30 minutes grace: 22:15 is yellow, 22:45 red. Yellow keeps 🔥 going but resets ❤️‍🔥.

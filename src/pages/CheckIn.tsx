@@ -13,7 +13,7 @@ import type { Checkin } from '../lib/types'
 type Drafts = Record<string, Checkin>
 
 export default function CheckIn() {
-  const { activeHabits, checkins, today, saveCheckins } = useData()
+  const { activeHabits, checkins, today, saveCheckins, undoCheckins } = useData()
   const [params, setParams] = useSearchParams()
 
   // Which day are we checking in for? Today, or last night if you missed it.
@@ -37,29 +37,32 @@ export default function CheckIn() {
   const [error, setError] = useState<string | null>(null)
   const [queued, setQueued] = useState(false)
   const [result, setResult] = useState<{ message: string; verse?: (typeof GRACE_VERSES)[number] } | null>(null)
+  const [undone, setUndone] = useState(false)
 
   // Start fresh whenever the selected day changes.
   useEffect(() => {
     setDrafts(existing)
     setResult(null)
     setError(null)
+    setUndone(false)
     // (only when the day changes, not on every save)
   }, [date])
 
   // Slips logged with "✋ I just gave in" answer a habit you're breaking before you do:
   // its colour follows the count (you can still change it).
   const slips = useAsync(() => listMySlips(today, 2), [today])
+  const withSlips = (prev: Drafts): Drafts => {
+    if (!slips.data) return prev
+    const next = { ...prev }
+    for (const h of dueHabits) {
+      if (h.type !== 'avoid' || next[h.id]) continue
+      const outcome = slipOutcome(slipDay(slips.data, h.id, date), h.slip_yellow_max ?? 0)
+      if (outcome) next[h.id] = { habit_id: h.id, date, outcome, value_number: null, value_time: null, tags: [], note: null }
+    }
+    return next
+  }
   useEffect(() => {
-    if (!slips.data) return
-    setDrafts((prev) => {
-      const next = { ...prev }
-      for (const h of dueHabits) {
-        if (h.type !== 'avoid' || next[h.id]) continue
-        const outcome = slipOutcome(slipDay(slips.data!, h.id, date), h.slip_yellow_max ?? 0)
-        if (outcome) next[h.id] = { habit_id: h.id, date, outcome, value_number: null, value_time: null, tags: [], note: null }
-      }
-      return next
-    })
+    if (slips.data) setDrafts(withSlips)
     // (once the slips are in, and again for another day)
   }, [slips.data, date])
 
@@ -86,6 +89,28 @@ export default function CheckIn() {
     }
   }
 
+  // Checked in on the wrong day? Remove that day's answers and start again.
+  const dayName = date === today ? 'today' : 'last night'
+  async function undo() {
+    if (!confirm(`Undo ${dayName}’s check-in? Your answers for ${dayName} are removed, and you can check in again.`)) return
+    setBusy(true)
+    setError(null)
+    try {
+      await undoCheckins(date)
+      setResult(null)
+      setDrafts(withSlips({}))
+      setUndone(true)
+      window.scrollTo({ top: 0 })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const undoButton = Object.keys(existing).length > 0 && (
+    <button className="btn-ghost w-full text-sm" disabled={busy} onClick={undo}>↩︎ Undo {dayName}’s check-in</button>
+  )
+
   if (result) {
     const honesty = honestyStreak(activeHabits, checkins, today)
     return (
@@ -105,6 +130,8 @@ export default function CheckIn() {
         {result.verse && <Link to="/sos?mode=share" className="btn-secondary w-full">🤝 Tell my group / reach out to someone</Link>}
         <Link to="/" className="btn-primary w-full">Done</Link>
         <button className="btn-ghost w-full" onClick={() => setResult(null)}>Edit answers</button>
+        {undoButton}
+        <ErrorText error={error} />
       </div>
     )
   }
@@ -123,6 +150,17 @@ export default function CheckIn() {
           </button>
         ))}
       </div>
+
+      {undone && (
+        <div className="card space-y-2 border-l-4 border-sky-400" role="status">
+          <p>↩︎ {date === today ? 'Today’s' : 'Last night’s'} check-in was undone. You can check in again whenever you’re ready.</p>
+          {date === today && (
+            <button className="btn-secondary w-full" onClick={() => setParams({ day: 'yesterday' }, { replace: true })}>
+              Check in for last night instead
+            </button>
+          )}
+        </div>
+      )}
 
       {date === yesterday && (
         <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
@@ -154,6 +192,7 @@ export default function CheckIn() {
       )}
 
       <ErrorText error={error} />
+      {undoButton}
 
       {dueHabits.length > 0 && (
         <div className="sticky bottom-20 z-10 pt-2">
